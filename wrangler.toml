@@ -1,8 +1,8 @@
-name = "templink-backend"
+name = "e-cell-startup-idea"
 main = "cloudflare/worker.ts"
 compatibility_date = "2024-09-23"
 
-# Durable Objects configuration for isolated ephemeral room state
+# Durable Objects configuration for isolated ephemeral room state in volatile RAM
 [durable_objects]
 bindings = [
   { name = "ROOMS", class_name = "RoomDurableObject" }
@@ -13,12 +13,6 @@ bindings = [
 tag = "v1"
 new_classes = ["RoomDurableObject"]
 
-# Cloudflare D1 Database binding for persistent metadata
-[[d1_databases]]
-binding = "DB"
-database_name = "templink-d1"
-database_id = "local-d1-id"
-
 [vars]
 ENVIRONMENT = "production"
-APP_URL = "https://templink.app"
+APP_URL = "https://templink.in"

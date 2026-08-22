@@ -5,7 +5,7 @@ export { RoomDurableObject };
 
 export interface Env {
   ROOMS: DurableObjectNamespace;
-  DB: D1Database;
+  DB?: D1Database;
   APP_URL?: string;
 }
 
