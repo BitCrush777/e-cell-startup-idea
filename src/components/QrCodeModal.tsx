@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import QrCode from './QrCode';
 import { useToast } from './ToastProvider';
 import { BorderBeam } from '@/components/magicui/BorderBeam';
+import { getJoinUrl } from '@/lib/urls';
 
 interface QrCodeModalProps {
   isOpen: boolean;
@@ -18,11 +19,7 @@ export default function QrCodeModal({ isOpen, onClose, roomCode, joinUrl }: QrCo
 
   if (!isOpen) return null;
 
-  const actualJoinUrl =
-    joinUrl ||
-    (typeof window !== 'undefined'
-      ? `${window.location.origin}/join/${roomCode}`
-      : `https://templink.app/join/${roomCode}`);
+  const actualJoinUrl = joinUrl || getJoinUrl(roomCode);
 
   const copyLink = async () => {
     try {
@@ -84,16 +81,7 @@ export default function QrCodeModal({ isOpen, onClose, roomCode, joinUrl }: QrCo
         </div>
 
         {/* Dynamic QR Container */}
-        <div className="bg-white p-4 rounded-2xl shadow-lg border border-white/20 flex items-center justify-center">
-          <QRCodeSVG
-            value={actualJoinUrl}
-            size={180}
-            bgColor="#ffffff"
-            fgColor="#051424"
-            level="H"
-            includeMargin={false}
-          />
-        </div>
+        <QrCode key={roomCode} value={actualJoinUrl} size={180} />
 
         {/* Room Code Badge */}
         <div

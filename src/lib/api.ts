@@ -1,4 +1,5 @@
 import { Room, Participant, Message } from '@/types';
+import { getJoinUrl } from '@/lib/urls';
 
 // API Base URL (Configurable for Cloudflare Worker URL or local Next.js proxy)
 const API_BASE_URL =
@@ -31,7 +32,6 @@ export interface RoomValidationResult {
 }
 
 export async function createRoom(params: CreateRoomParams): Promise<Room> {
-  const origin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || 'https://templink.in');
   const durationMinutes = params.durationMinutes || (params.duration ? Math.floor(params.duration / 60) : 30);
   const requestId = params.requestId || 'req_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 
@@ -48,7 +48,6 @@ export async function createRoom(params: CreateRoomParams): Promise<Room> {
       creatorParticipantId: params.creatorParticipantId,
       creatorName: params.creatorName || 'Creator',
       requestId,
-      baseUrl: origin,
     }),
   });
 
@@ -58,16 +57,13 @@ export async function createRoom(params: CreateRoomParams): Promise<Room> {
   }
 
   const room: Room = data.room || data;
-  if (!room.joinUrl) {
-    room.joinUrl = `${origin}/join/${room.roomCode}`;
-  }
+  room.joinUrl = getJoinUrl(room.roomCode);
 
   return room;
 }
 
 export async function getRoom(roomCode: string): Promise<Room> {
   const code = roomCode.toUpperCase().trim();
-  const origin = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || 'https://templink.in');
 
   const res = await fetch(`${API_BASE_URL}/api/rooms/${code}`, {
     method: 'GET',
@@ -81,9 +77,7 @@ export async function getRoom(roomCode: string): Promise<Room> {
   }
 
   const room: Room = data.room || data;
-  if (!room.joinUrl) {
-    room.joinUrl = `${origin}/join/${room.roomCode}`;
-  }
+  room.joinUrl = getJoinUrl(room.roomCode);
 
   return room;
 }

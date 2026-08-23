@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { QRCodeSVG } from 'qrcode.react';
+import QrCode from '@/components/QrCode';
 import { useToast } from '@/components/ToastProvider';
 import { createRoom } from '@/lib/api';
 import { generateTemporaryIdentity, generateParticipantId } from '@/lib/identity';
@@ -204,15 +204,11 @@ export default function CreateRoomPage() {
 
             {/* Dynamic QR Display */}
             <div className="relative flex flex-col items-center justify-center p-5 bg-[#05070B] rounded-2xl border border-white/10 gap-3">
-              <div className="bg-white p-3 rounded-2xl shadow-xl border border-white/20">
-                <QRCodeSVG
-                  value={createdRoom.joinUrl}
-                  size={150}
-                  bgColor="#ffffff"
-                  fgColor="#051424"
-                  level="H"
-                />
-              </div>
+              <QrCode
+                key={createdRoom.roomCode}
+                value={createdRoom.joinUrl}
+                size={180}
+              />
               <span className="text-[11px] text-slate-400">
                 Scan with any smartphone camera to connect instantly
               </span>
