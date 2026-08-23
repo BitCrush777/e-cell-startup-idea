@@ -54,7 +54,7 @@ export default function Footer() {
             © {new Date().getFullYear()} TempLink Systems. Ephemeral privacy platform.
           </div>
           <div className="text-slate-400 font-medium">
-            Designed &amp; Developed by <span className="text-slate-200 font-semibold">Sai Darshan.k</span>
+            Designed &amp; Developed by <span className="text-slate-200 font-semibold">Sai Darshan.k</span> • <span className="text-slate-400">Built with the TempLink team</span>
           </div>
         </div>
       </div>

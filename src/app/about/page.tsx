@@ -6,30 +6,63 @@ import { BorderBeam } from '@/components/magicui/BorderBeam';
 import { ShimmerButton } from '@/components/magicui/ShimmerButton';
 
 export const metadata: Metadata = {
-  title: 'About TempLink — Private conversations. Temporary by design.',
+  title: 'About TempLink — Meet the Team',
   description:
-    'Learn about TempLink, a privacy-focused temporary communication platform designed and developed by Sai Darshan.k.',
+    'Learn about TempLink and the team building a privacy-focused temporary communication platform.',
   openGraph: {
-    title: 'About TempLink — Private conversations. Temporary by design.',
+    title: 'About TempLink — Meet the Team',
     description:
-      'Learn about TempLink, a privacy-focused temporary communication platform designed and developed by Sai Darshan.k.',
+      'Learn about TempLink and the team building a privacy-focused temporary communication platform.',
   },
 };
+
+const teamMembers = [
+  {
+    name: 'Sai Darshan.k',
+    initials: 'SD',
+    role: 'Founder & Lead Developer',
+    responsibilities: 'Product vision • Architecture • Development • UI/UX',
+    description:
+      'Leading the product vision, system architecture, development, and overall design of TempLink.',
+    avatarGradient: 'from-indigo-500 via-primary to-purple-600',
+    highlight: true,
+  },
+  {
+    name: 'Anusuya.S',
+    initials: 'AS',
+    role: 'Team Member',
+    responsibilities: 'Project contribution • Collaboration',
+    description:
+      'Contributing to the development and growth of the TempLink project.',
+    avatarGradient: 'from-cyan-500 via-sky-600 to-indigo-600',
+    highlight: false,
+  },
+  {
+    name: 'Akastin.R',
+    initials: 'AR',
+    role: 'Team Member',
+    responsibilities: 'Project contribution • Collaboration',
+    description:
+      'Contributing to the development and growth of the TempLink project.',
+    avatarGradient: 'from-emerald-500 via-teal-600 to-indigo-600',
+    highlight: false,
+  },
+];
 
 export default function AboutPage() {
   return (
     <main className="flex-1 w-full min-h-[calc(100vh-80px)] bg-[#05070B] text-slate-100 relative overflow-hidden pt-28 pb-20 px-4 md:px-8">
       {/* Subtle Background Glows */}
       <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[800px] h-[450px] bg-primary/10 rounded-full blur-[150px] pointer-events-none -z-10" />
-      <div className="absolute bottom-10 right-[-10%] w-[500px] h-[350px] bg-indigo-500/5 rounded-full blur-[130px] pointer-events-none -z-10" />
+      <div className="absolute top-[40%] right-[-10%] w-[500px] h-[350px] bg-indigo-500/5 rounded-full blur-[130px] pointer-events-none -z-10" />
 
-      <div className="max-w-4xl mx-auto flex flex-col gap-16 md:gap-20 relative z-10">
-        {/* Hero Section */}
+      <div className="max-w-5xl mx-auto flex flex-col gap-16 md:gap-20 relative z-10">
+        {/* 1. Hero Section */}
         <section className="text-center flex flex-col items-center">
           <BlurFade delay={0.1}>
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0D111A] border border-white/10 text-primary-light text-xs font-semibold mb-6 shadow-sm">
               <span className="material-symbols-outlined text-[15px]">info</span>
-              The Story Behind TempLink
+              About TempLink
             </div>
           </BlurFade>
 
@@ -95,7 +128,7 @@ export default function AboutPage() {
           </div>
         </BlurFade>
 
-        {/* Our Vision Section */}
+        {/* 2. Our Vision Section */}
         <section className="glass-panel p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#080B12]/85 shadow-2xl relative overflow-hidden">
           <BorderBeam size={220} duration={10} colorFrom="#6366F1" colorTo="#38BDF8" />
           
@@ -113,7 +146,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* What TempLink Does — 3 Elegant Feature Cards */}
+        {/* 3. What TempLink Does — 3 Feature Cards */}
         <section>
           <div className="text-center mb-8">
             <span className="text-xs font-semibold text-primary-light uppercase tracking-widest block mb-1.5">
@@ -181,20 +214,78 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Creator Section */}
+        {/* 4. Meet the Team Section */}
+        <section>
+          <div className="text-center mb-10">
+            <span className="text-xs font-semibold text-primary-light uppercase tracking-widest block mb-1.5">
+              The Builders
+            </span>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-3">
+              Meet the Team
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto">
+              The people behind TempLink, building a simpler approach to temporary private communication.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {teamMembers.map((member, idx) => (
+              <BlurFade key={member.name} delay={0.1 * (idx + 1)}>
+                <div className="glass-panel p-6 sm:p-7 rounded-3xl border border-white/10 bg-[#080B12]/85 h-full flex flex-col justify-between group hover:border-primary/40 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 relative overflow-hidden">
+                  {member.highlight && (
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[50px] pointer-events-none" />
+                  )}
+
+                  <div>
+                    {/* Abstract Initials Avatar */}
+                    <div className="flex items-center gap-4 mb-5">
+                      <div
+                        className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${member.avatarGradient} flex items-center justify-center text-white font-display font-bold text-lg shadow-lg group-hover:scale-105 transition-transform border border-white/20`}
+                      >
+                        {member.initials}
+                      </div>
+                      <div className="flex flex-col">
+                        <h3 className="font-display text-lg font-bold text-white group-hover:text-primary-light transition-colors">
+                          {member.name}
+                        </h3>
+                        <span className="text-xs font-semibold text-primary-light">
+                          {member.role}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Contribution Description */}
+                    <p className="text-xs text-slate-300 leading-relaxed mb-4">
+                      {member.description}
+                    </p>
+                  </div>
+
+                  {/* Responsibilities Pill */}
+                  <div className="pt-4 border-t border-white/5">
+                    <span className="text-[10px] text-slate-400 font-mono tracking-tight block">
+                      {member.responsibilities}
+                    </span>
+                  </div>
+                </div>
+              </BlurFade>
+            ))}
+          </div>
+        </section>
+
+        {/* 5. Creator / Project Credit Section */}
         <section className="glass-panel p-8 sm:p-10 rounded-3xl border border-white/10 bg-gradient-to-b from-[#0D111A] to-[#080B12] shadow-2xl relative overflow-hidden">
           <div className="max-w-2xl mx-auto text-center flex flex-col items-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#161E2E] border border-white/10 text-primary-light text-xs font-semibold mb-4">
               <span className="material-symbols-outlined text-[15px]">code</span>
-              Designed &amp; Developed By
+              Project Designed &amp; Developed By
             </div>
 
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-4">
+            <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-3">
               Sai Darshan.k
             </h2>
 
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6">
-              TempLink was designed and developed by <strong>Sai Darshan.k</strong> as a privacy-first communication product focused on temporary, simple, and accessible digital interactions.
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6 max-w-xl">
+              TempLink is a collaborative startup project developed with a focus on privacy-first temporary communication.
             </p>
 
             <div className="flex items-center gap-3">
@@ -210,9 +301,9 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Muted Bottom Credit */}
+        {/* 6. Muted Bottom Credit */}
         <div className="text-center pt-2 text-xs text-slate-500 font-mono">
-          TempLink — Designed &amp; Developed by <span className="text-slate-400 font-medium">Sai Darshan.k</span>
+          TempLink — Designed &amp; Developed by <span className="text-slate-300 font-medium">Sai Darshan.k</span> • Built with the TempLink team
         </div>
       </div>
     </main>
