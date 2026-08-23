@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as nodeCrypto from 'node:crypto';
 import { User, UserPlan } from '@/types';
 
 // In-Memory User & Session Store (Edge / Server runtime)
@@ -18,6 +18,23 @@ interface ResetTokenData {
   expiresAt: number;
 }
 
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function getRandomHex(bytesLength: number): string {
+  const bytes = new Uint8Array(bytesLength);
+  nodeCrypto.randomFillSync(bytes);
+  return toHex(bytes);
+}
+
+function getPbkdf2Hex(password: string, salt: string): string {
+  const derived = nodeCrypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');
+  return toHex(new Uint8Array(derived.buffer, derived.byteOffset, derived.byteLength));
+}
+
 // Global in-memory maps to persist across hot reloads in Next.js development/production
 const globalAuth = global as unknown as {
   __templink_users?: Map<string, StoredUser>;
@@ -31,8 +48,8 @@ if (!globalAuth.__templink_users) {
   globalAuth.__templink_reset_tokens = new Map();
 
   // Seed default Demo Pro Account for presentation & testing
-  const seedSalt = crypto.randomBytes(16).toString('hex');
-  const seedHash = crypto.pbkdf2Sync('ProSecure#2026', seedSalt, 100000, 64, 'sha512').toString('hex');
+  const seedSalt = getRandomHex(16);
+  const seedHash = getPbkdf2Hex('ProSecure#2026', seedSalt);
 
   globalAuth.__templink_users.set('alex@example.com', {
     id: 'user_alex_pro_2026',
@@ -51,13 +68,13 @@ const sessionsMap = globalAuth.__templink_sessions!;
 const resetTokensMap = globalAuth.__templink_reset_tokens!;
 
 export function hashPassword(password: string): { hash: string; salt: string } {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  const salt = getRandomHex(16);
+  const hash = getPbkdf2Hex(password, salt);
   return { hash, salt };
 }
 
 export function verifyPassword(password: string, hash: string, salt: string): boolean {
-  const checkHash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  const checkHash = getPbkdf2Hex(password, salt);
   return checkHash === hash;
 }
 
@@ -69,7 +86,7 @@ export function registerUser(email: string, password: string, displayName: strin
   }
 
   const { hash, salt } = hashPassword(password);
-  const id = 'usr_' + crypto.randomBytes(8).toString('hex');
+  const id = 'usr_' + getRandomHex(8);
 
   const newUser: StoredUser = {
     id,
@@ -113,7 +130,7 @@ export function authenticateUser(email: string, password: string): User {
 }
 
 export function createSession(userId: string): string {
-  const sessionToken = 'sess_' + crypto.randomBytes(32).toString('hex');
+  const sessionToken = 'sess_' + getRandomHex(32);
   // 30 days expiration
   sessionsMap.set(sessionToken, {
     userId,
@@ -158,7 +175,7 @@ export function generateResetToken(email: string): string | null {
     return null;
   }
 
-  const resetToken = 'rst_' + crypto.randomBytes(24).toString('hex');
+  const resetToken = 'rst_' + getRandomHex(24);
   // 15 minutes expiration
   resetTokensMap.set(resetToken, {
     email: normalizedEmail,

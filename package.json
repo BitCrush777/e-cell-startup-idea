@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build",
+    "build": "next build && opennextjs-cloudflare build --skipNextBuild",
+    "preview": "opennextjs-cloudflare preview",
+    "deploy": "npm run build && wrangler deploy",
     "start": "next start -p 3000",
     "lint": "next lint",
     "test": "npx tsx --test tests/room.test.ts tests/realtime.test.ts tests/expiration.test.ts tests/auth.test.ts",
@@ -23,7 +25,8 @@
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241022.0",
+    "@cloudflare/workers-types": "^5.20260823.1",
+    "@opennextjs/cloudflare": "^1.14.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20.17.0",
     "@types/react": "^18.3.12",
@@ -33,6 +36,6 @@
     "tailwindcss": "^3.4.14",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
-    "wrangler": "^3.83.0"
+    "wrangler": "^4.125.0"
   }
 }
