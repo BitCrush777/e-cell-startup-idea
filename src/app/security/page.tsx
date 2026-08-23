@@ -107,6 +107,16 @@ export default function SecurityPage() {
             Creators can specify unique session passphrases. Joining parties must verify credentials before connecting to the room socket, preventing unauthorized eavesdropping.
           </p>
         </div>
+
+        <div className="glass-panel rounded-3xl p-7 flex flex-col gap-3 bg-[#080B12]/80 border border-white/10 md:col-span-2">
+          <div className="w-12 h-12 rounded-2xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light">
+            <span className="material-symbols-outlined text-[24px]">verified_user</span>
+          </div>
+          <h3 className="font-display font-bold text-lg text-white">SafeRoom Automated Protection & Privacy</h3>
+          <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+            TempLink utilizes automated server-side conversation guidelines to prevent abusive content, harassment, slurs, and violent threats. Messages that violate our guidelines are blocked in memory before broadcasting, and repeated violations automatically close the room for all members. We strictly do not store plaintext chat histories for moderation purposes.
+          </p>
+        </div>
       </section>
 
       {/* CTA Box */}
