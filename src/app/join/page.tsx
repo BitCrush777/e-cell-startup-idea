@@ -32,6 +32,7 @@ function JoinRoomContent() {
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const validationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasHandledScanRef = useRef<boolean>(false);
 
   // Auto-focus on desktop/tablet
   useEffect(() => {
@@ -90,20 +91,29 @@ function JoinRoomContent() {
     }
   };
 
-  // Initial code param handling (from QR scan or deep link)
+  // Initial code param handling (from QR scan or deep link) - STRICTLY ONCE
   useEffect(() => {
     if (codeParam) {
       const formatted = normalizeRoomCode(codeParam);
       setCode(formatted);
-      if (isScanned) {
-        toast('QR code scanned successfully!', 'success');
+
+      if (isScanned && !hasHandledScanRef.current) {
+        hasHandledScanRef.current = true;
+        toast('QR code scanned successfully!', 'success', 3000, 'qr-scan-success');
         setScannedBadge(true);
+
+        // Clean query parameter without page reload
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+          const newUrl = `${window.location.pathname}?code=${encodeURIComponent(formatted)}`;
+          window.history.replaceState({}, '', newUrl);
+        }
       }
+
       if (formatted.length >= 4) {
         performValidation(formatted);
       }
     }
-  }, [codeParam, isScanned, toast]);
+  }, [codeParam, isScanned]);
 
   const handlePasteClipboard = async () => {
     try {
