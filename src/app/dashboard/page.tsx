@@ -155,7 +155,7 @@ export default function DashboardPage() {
                             group
                           </span>
                           <span className="text-[10px] font-semibold text-slate-300">
-                            {r.participantCount || 1}/{r.maxParticipants || 2} Active
+                            {r.participantCount || r.currentMembers || 1}/{r.maxMembers || r.maxParticipants || 3} members Active
                           </span>
                         </div>
 

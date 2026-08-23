@@ -122,10 +122,10 @@ export default function SettingsPage() {
                             </div>
                             <span className="text-[11px] text-slate-400">
                               {plan === 'FREE'
-                                ? 'Basic 1-on-1 rooms'
+                                ? 'Up to 3 members per room'
                                 : plan === 'PRO'
-                                ? '24h TTL & passwords'
-                                : 'Enterprise clusters'}
+                                ? 'Up to 10 members & 24h TTL'
+                                : 'Enterprise clusters (25+ members)'}
                             </span>
                             <span className="text-[10px] text-primary-light font-semibold mt-3">
                               {isCurrent ? 'Active Plan' : 'Switch to ' + plan}

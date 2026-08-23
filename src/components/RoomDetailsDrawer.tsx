@@ -138,7 +138,7 @@ export default function RoomDetailsDrawer({
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <h4 className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider">
-                Participants ({room.participants.length}/{room.maxParticipants})
+                Participants ({room.participants.length}/{room.maxMembers || room.maxParticipants || 3})
               </h4>
             </div>
             <ul className="flex flex-col gap-1.5">

@@ -30,6 +30,7 @@ export interface Message {
 }
 
 export type RoomStatus = 'WAITING' | 'ACTIVE' | 'EXPIRING' | 'EXPIRED' | 'ENDED';
+export type RoomPlan = 'FREE' | 'PRO' | 'BUSINESS';
 
 export interface RoomState {
   id: string;             // Internal authoritative room ID
@@ -39,6 +40,9 @@ export interface RoomState {
   createdAt: number;
   expiresAt: number;
   durationMinutes: number;
+  plan: RoomPlan;         // Subscription plan: FREE (3), PRO (10), BUSINESS (25+)
+  maxMembers: number;     // Authoritative member limit
+  maxParticipants: number;// Compatibility alias
   participantLimit: number;
   passwordProtected: boolean;
   passwordHash?: string;
@@ -52,8 +56,8 @@ export interface RoomState {
 }
 
 export type RoomEvent =
-  | { type: 'participant_joined'; roomCode: string; participant: Participant }
-  | { type: 'participant_left'; roomCode: string; participantId: string; participantName?: string }
+  | { type: 'participant_joined'; roomCode: string; participant: Participant; currentMembers?: number; maxMembers?: number }
+  | { type: 'participant_left'; roomCode: string; participantId: string; participantName?: string; currentMembers?: number; maxMembers?: number }
   | { type: 'message'; roomCode: string; message: Message }
   | { type: 'typing'; roomCode: string; participantId: string; displayName?: string; typing: boolean }
   | { type: 'room_state'; roomCode: string; state: Partial<RoomState> }
@@ -62,6 +66,13 @@ export type RoomEvent =
   | { type: 'room_ended'; roomCode: string; reason: string }
   | { type: 'connection_status'; status: 'connected' | 'reconnecting' | 'disconnected' }
   | { type: 'pong'; timestamp: number };
+
+function getLimitForPlan(plan?: string | null): number {
+  const p = (plan || 'FREE').toUpperCase();
+  if (p === 'PRO') return 10;
+  if (p === 'BUSINESS') return 25;
+  return 3;
+}
 
 export class RoomDurableObject {
   private state: DurableObjectState;
@@ -84,6 +95,8 @@ export class RoomDurableObject {
     if (!this.room && inferredCode) {
       const now = Date.now();
       const durationMinutes = 30;
+      const plan: RoomPlan = 'FREE';
+      const maxMembers = 3;
       this.room = {
         id: 'room_' + inferredCode.replace(/[^A-Za-z0-9]/g, ''),
         roomCode: inferredCode.toUpperCase().trim(),
@@ -91,7 +104,10 @@ export class RoomDurableObject {
         createdAt: now,
         expiresAt: now + durationMinutes * 60 * 1000,
         durationMinutes,
-        participantLimit: 2,
+        plan,
+        maxMembers,
+        maxParticipants: maxMembers,
+        participantLimit: maxMembers,
         passwordProtected: false,
         allowFiles: true,
         notifyExpiration: true,
@@ -118,8 +134,27 @@ export class RoomDurableObject {
     }
 
     if (this.room) {
-      this.checkExpiration();
+      // Ensure maxMembers and plan exist
+      if (!this.room.plan) this.room.plan = 'FREE';
+      if (!this.room.maxMembers) {
+        this.room.maxMembers = this.room.participantLimit || getLimitForPlan(this.room.plan);
+      }
+      this.room.maxParticipants = this.room.maxMembers;
+      this.room.participantLimit = this.room.maxMembers;
+
+      // Check server-authoritative expiration
+      if (Date.now() >= this.room.expiresAt && this.room.status !== 'EXPIRED' && this.room.status !== 'ENDED') {
+        this.room.status = 'EXPIRED';
+        await this.saveRoom();
+        this.broadcast({
+          type: 'room_expired',
+          roomCode: this.room.roomCode,
+          reason: 'TTL countdown reached zero.',
+        });
+        this.closeAllSockets(1000, 'Room expired');
+      }
     }
+
     return this.room;
   }
 
@@ -129,69 +164,42 @@ export class RoomDurableObject {
     }
   }
 
-  private checkExpiration(): boolean {
-    if (!this.room) return true;
-    const now = Date.now();
-
-    if (now >= this.room.expiresAt && this.room.status !== 'ENDED') {
-      this.room.status = 'EXPIRED';
-      this.room.messages = []; // Zeroize all ephemeral messages immediately
-      this.broadcast({
-        type: 'room_expired',
-        roomCode: this.room.roomCode,
-        reason: 'Room lifespan reached 0:00. Ephemeral memory zeroized.',
-      });
-      this.closeAllSockets(1000, 'Room expired');
-      return true;
-    }
-
-    if (this.room.expiresAt - now <= 60000 && this.room.status === 'ACTIVE') {
-      this.room.status = 'EXPIRING';
-      this.broadcast({
-        type: 'room_expiring',
-        roomCode: this.room.roomCode,
-        remainingSeconds: Math.max(0, Math.floor((this.room.expiresAt - now) / 1000)),
-      });
-    }
-
-    return false;
-  }
-
-  async alarm(): Promise<void> {
-    await this.loadRoom();
-    if (this.room && this.room.status !== 'ENDED') {
-      this.room.status = 'EXPIRED';
-      this.room.messages = [];
-      await this.saveRoom();
-      this.broadcast({
-        type: 'room_expired',
-        roomCode: this.room.roomCode,
-        reason: 'Authoritative server timer reached 0:00.',
-      });
-      this.closeAllSockets(1000, 'Room expired');
-    }
-  }
-
-  private broadcast(event: RoomEvent, excludeWs?: WebSocket): void {
+  private broadcast(event: RoomEvent, excludeSocket?: WebSocket): void {
     const payload = JSON.stringify(event);
-    for (const [ws] of this.sessions.entries()) {
-      if (ws !== excludeWs && ws.readyState === WebSocket.OPEN) {
+    for (const [socket] of this.sessions.entries()) {
+      if (socket !== excludeSocket && socket.readyState === WebSocket.OPEN) {
         try {
-          ws.send(payload);
+          socket.send(payload);
         } catch {
-          this.sessions.delete(ws);
+          this.sessions.delete(socket);
         }
       }
     }
   }
 
-  private closeAllSockets(code: number, reason: string): void {
-    for (const [ws] of this.sessions.entries()) {
+  private closeAllSockets(code: number = 1000, reason: string = 'Closed'): void {
+    for (const [socket] of this.sessions.entries()) {
       try {
-        ws.close(code, reason);
+        socket.close(code, reason);
       } catch {}
     }
     this.sessions.clear();
+  }
+
+  // Cloudflare Alarm for deterministic, server-level expiration zeroization
+  async alarm(): Promise<void> {
+    if (this.room) {
+      this.room.status = 'EXPIRED';
+      this.broadcast({
+        type: 'room_expired',
+        roomCode: this.room.roomCode,
+        reason: 'Room lifespan completed. Memory zeroized.',
+      });
+      this.closeAllSockets(1000, 'Room expired');
+    }
+    // Wipe volatile storage cleanly
+    await this.state.storage.deleteAll();
+    this.room = null;
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -222,6 +230,8 @@ export class RoomDurableObject {
       const internalId = data.roomId || data.id || 'room_' + Math.random().toString(36).substring(2, 9);
       const roomCode = (data.roomCode || roomCodeFromUrl || 'UNKNOWN').toUpperCase().trim();
       const joinUrl = data.joinUrl || `https://templink.in/join/${roomCode}`;
+      const plan: RoomPlan = data.plan ? (data.plan.toUpperCase() as RoomPlan) : 'FREE';
+      const maxMembers = data.maxMembers || data.maxParticipants || getLimitForPlan(plan);
 
       const creator: Participant = {
         participantId: creatorId,
@@ -239,7 +249,10 @@ export class RoomDurableObject {
         createdAt: now,
         expiresAt: now + durationMs,
         durationMinutes: data.durationMinutes || 15,
-        participantLimit: data.maxParticipants || 2,
+        plan,
+        maxMembers,
+        maxParticipants: maxMembers,
+        participantLimit: maxMembers,
         passwordProtected: !!data.passwordProtected,
         passwordHash: data.passwordHash,
         allowFiles: data.allowFiles !== false,
@@ -254,7 +267,7 @@ export class RoomDurableObject {
             roomCode,
             senderId: 'system',
             senderName: 'TempLink System',
-            content: `Private room initialized. Ephemeral TTL: ${data.durationMinutes || 15} minutes.`,
+            content: `Private room initialized (${plan} plan: up to ${maxMembers} members). Ephemeral TTL: ${data.durationMinutes || 15}m.`,
             timestamp: now,
             type: 'system',
           },
@@ -314,10 +327,20 @@ export class RoomDurableObject {
         (p) => p.participantId === participantId
       );
 
+      const maxMembers = this.room.maxMembers || this.room.participantLimit || 3;
+
       if (!participant) {
-        if (this.room.participants.length >= this.room.participantLimit) {
+        // Authoritative server-side member limit enforcement
+        if (this.room.participants.length >= maxMembers) {
           return new Response(
-            JSON.stringify({ success: false, error: 'Room is full (limit 2 participants).' }),
+            JSON.stringify({
+              success: false,
+              error: `Room is full (limit ${maxMembers} members reached for ${this.room.plan || 'Free'} plan).`,
+              code: 'ROOM_FULL',
+              currentMembers: this.room.participants.length,
+              maxMembers,
+              plan: this.room.plan || 'FREE',
+            }),
             { status: 400, headers: { 'Content-Type': 'application/json' } }
           );
         }
@@ -347,6 +370,8 @@ export class RoomDurableObject {
           type: 'participant_joined',
           roomCode: this.room.roomCode,
           participant,
+          currentMembers: this.room.participants.length,
+          maxMembers,
         });
         this.broadcast({
           type: 'message',
@@ -358,13 +383,14 @@ export class RoomDurableObject {
       }
 
       await this.saveRoom();
+
       return new Response(JSON.stringify({ success: true, room: this.room, participant }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    // 5. Send Message HTTP Fallback
-    if (url.pathname.endsWith('/messages') && request.method === 'POST') {
+    // 5. Post Message
+    if (url.pathname === '/messages' && request.method === 'POST') {
       if (!this.room || this.room.status === 'EXPIRED' || this.room.status === 'ENDED') {
         return new Response(JSON.stringify({ success: false, error: 'Room unavailable' }), {
           status: 410,
@@ -378,15 +404,20 @@ export class RoomDurableObject {
       const msg: Message = {
         id: body.id || 'msg_' + Math.random().toString(36).substring(2, 9),
         roomCode: this.room.roomCode,
-        senderId: body.senderId,
+        senderId: body.senderId || 'unknown',
         senderName: sender?.displayName || body.senderName || 'Anonymous',
         content: body.content || '',
         timestamp: Date.now(),
-        type: body.file ? 'file' : 'text',
+        type: body.type || 'text',
         file: body.file,
       };
 
       this.room.messages.push(msg);
+      // Keep last 100 messages in memory
+      if (this.room.messages.length > 100) {
+        this.room.messages = this.room.messages.slice(-100);
+      }
+
       await this.saveRoom();
 
       this.broadcast({
@@ -400,7 +431,7 @@ export class RoomDurableObject {
       });
     }
 
-    // 6. End Room
+    // 6. Manual End Room
     if (url.pathname === '/end' && request.method === 'POST') {
       if (!this.room) {
         return new Response(JSON.stringify({ success: false, error: 'Room not found' }), {
@@ -410,22 +441,25 @@ export class RoomDurableObject {
       }
 
       this.room.status = 'ENDED';
-      this.room.messages = [];
       await this.saveRoom();
 
       this.broadcast({
         type: 'room_ended',
         roomCode: this.room.roomCode,
-        reason: 'Host terminated this private session.',
+        reason: 'The room was manually ended by the owner.',
       });
-      this.closeAllSockets(1000, 'Room ended');
 
-      return new Response(JSON.stringify({ success: true, message: 'Room ended' }), {
+      this.closeAllSockets(1000, 'Room ended by owner');
+
+      return new Response(JSON.stringify({ success: true, room: this.room }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Endpoint not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   private handleWebSocket(request: Request, inferredCode?: string): Response {
@@ -436,6 +470,8 @@ export class RoomDurableObject {
     if (!this.room && inferredCode) {
       const now = Date.now();
       const durationMinutes = 30;
+      const plan: RoomPlan = 'FREE';
+      const maxMembers = 3;
       this.room = {
         id: 'room_' + inferredCode.replace(/[^A-Za-z0-9]/g, ''),
         roomCode: inferredCode.toUpperCase().trim(),
@@ -443,7 +479,10 @@ export class RoomDurableObject {
         createdAt: now,
         expiresAt: now + durationMinutes * 60 * 1000,
         durationMinutes,
-        participantLimit: 2,
+        plan,
+        maxMembers,
+        maxParticipants: maxMembers,
+        participantLimit: maxMembers,
         passwordProtected: false,
         allowFiles: true,
         notifyExpiration: true,
@@ -478,6 +517,22 @@ export class RoomDurableObject {
       return new Response('Room expired or unavailable', { status: 410 });
     }
 
+    const maxMembers = this.room.maxMembers || this.room.participantLimit || 3;
+    let existingParticipant = this.room.participants.find((x) => x.participantId === participantId);
+
+    // If new participant and room is already full, reject WebSocket upgrade
+    if (!existingParticipant && this.room.participants.length >= maxMembers) {
+      return new Response(
+        JSON.stringify({
+          error: 'ROOM_FULL',
+          code: 'ROOM_FULL',
+          currentMembers: this.room.participants.length,
+          maxMembers,
+        }),
+        { status: 400 }
+      );
+    }
+
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
 
@@ -486,39 +541,37 @@ export class RoomDurableObject {
     // Map WebSocket connection strictly to this participant session
     this.sessions.set(server, { participantId, displayName });
 
-    // Ensure participant is in room.participants and marked online
-    let p = this.room.participants.find((x) => x.participantId === participantId);
     let isNewParticipant = false;
 
-    if (!p) {
-      if (this.room.participants.length < this.room.participantLimit) {
-        p = {
-          participantId,
-          displayName,
-          role: this.room.participants.length === 0 ? 'creator' : 'member',
-          joinedAt: Date.now(),
-          isOnline: true,
-        };
-        this.room.participants.push(p);
-        this.room.status = 'ACTIVE';
-        isNewParticipant = true;
-      }
+    if (!existingParticipant) {
+      existingParticipant = {
+        participantId,
+        displayName,
+        role: this.room.participants.length === 0 ? 'creator' : 'member',
+        joinedAt: Date.now(),
+        isOnline: true,
+      };
+      this.room.participants.push(existingParticipant);
+      this.room.status = 'ACTIVE';
+      isNewParticipant = true;
     } else {
-      p.isOnline = true;
+      existingParticipant.isOnline = true;
       if (displayName && displayName !== 'Guest') {
-        p.displayName = displayName;
+        existingParticipant.displayName = displayName;
       }
     }
 
     this.saveRoom();
 
     // Notify others if a new participant joined
-    if (isNewParticipant && p) {
+    if (isNewParticipant && existingParticipant) {
       this.broadcast(
         {
           type: 'participant_joined',
           roomCode: this.room.roomCode,
-          participant: p,
+          participant: existingParticipant,
+          currentMembers: this.room.participants.length,
+          maxMembers,
         },
         server
       );
@@ -548,24 +601,29 @@ export class RoomDurableObject {
             id: msgId,
             roomCode: this.room.roomCode,
             senderId: session.participantId,
-            senderName: session.displayName,
+            senderName: data.senderName || session.displayName || 'Anonymous',
             content: data.content || '',
             timestamp: Date.now(),
-            type: data.file ? 'file' : 'text',
+            type: data.messageType || data.type === 'file' ? 'file' : 'text',
             file: data.file,
           };
 
           this.room.messages.push(msg);
+          if (this.room.messages.length > 100) {
+            this.room.messages = this.room.messages.slice(-100);
+          }
           await this.saveRoom();
 
-          // Broadcast to ALL sockets in the room
+          // Broadcast to all sockets
           this.broadcast({
             type: 'message',
             roomCode: this.room.roomCode,
             message: msg,
           });
-        } else if (data.type === 'typing') {
-          const isTyping = Boolean(data.typing);
+        }
+
+        if (data.type === 'typing' || data.type === 'typing_start' || data.type === 'typing_stop') {
+          const isTyping = data.type === 'typing' ? !!data.typing : data.type === 'typing_start';
           this.broadcast(
             {
               type: 'typing',
@@ -574,12 +632,16 @@ export class RoomDurableObject {
               displayName: session.displayName,
               typing: isTyping,
             },
-            server // Do not echo back to sender
+            server
           );
-        } else if (data.type === 'ping') {
+        }
+
+        if (data.type === 'ping') {
           server.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error('[DO WS Error]', err);
+      }
     });
 
     server.addEventListener('close', () => {
@@ -587,15 +649,21 @@ export class RoomDurableObject {
       this.sessions.delete(server);
 
       if (session && this.room) {
-        const participant = this.room.participants.find((x) => x.participantId === session.participantId);
-        if (participant) {
-          participant.isOnline = false;
+        // Mark participant offline
+        const p = this.room.participants.find((x) => x.participantId === session.participantId);
+        if (p) {
+          p.isOnline = false;
         }
+        this.saveRoom();
+
+        // Broadcast participant left / offline
         this.broadcast({
           type: 'participant_left',
           roomCode: this.room.roomCode,
           participantId: session.participantId,
           participantName: session.displayName,
+          currentMembers: this.room.participants.filter((x) => x.isOnline).length,
+          maxMembers: this.room.maxMembers,
         });
       }
     });

@@ -6,9 +6,10 @@ import Link from 'next/link';
 import { useToast } from '@/components/ToastProvider';
 import { joinRoom, validateRoom, RoomValidationResult } from '@/lib/api';
 import { generateTemporaryIdentity, generateParticipantId } from '@/lib/identity';
-import CountdownTimer from '@/components/CountdownTimer';
-import { Room } from '@/types';
 import { normalizeRoomCode } from '@/lib/urls';
+import CountdownTimer from '@/components/CountdownTimer';
+import { Room, RoomPlan } from '@/types';
+import { BorderBeam } from '@/components/magicui/BorderBeam';
 import { BlurFade } from '@/components/magicui/BlurFade';
 import { ShimmerButton } from '@/components/magicui/ShimmerButton';
 
@@ -27,6 +28,9 @@ function JoinRoomContent() {
   // Validation States: 'initial' | 'checking' | 'valid' | 'invalid' | 'expired' | 'full' | 'ended'
   const [validationState, setValidationState] = useState<'initial' | 'checking' | 'valid' | 'invalid' | 'expired' | 'full' | 'ended'>('initial');
   const [validatedRoom, setValidatedRoom] = useState<Room | null>(null);
+  const [roomPlan, setRoomPlan] = useState<RoomPlan>('FREE');
+  const [maxMembers, setMaxMembers] = useState<number>(3);
+  const [currentMembers, setCurrentMembers] = useState<number>(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState<boolean>(false);
 
@@ -72,15 +76,26 @@ function JoinRoomContent() {
 
     if (result.valid && result.room) {
       setValidatedRoom(result.room);
+      setRoomPlan(result.room.plan || 'FREE');
+      setMaxMembers(result.room.maxMembers || result.room.maxParticipants || 3);
+      setCurrentMembers(result.currentMembers || result.room.participants?.length || 1);
       setValidationState('valid');
     } else {
       setValidatedRoom(null);
       if (result.status === 'expired') {
         setValidationState('expired');
         setErrorMessage('This room has expired and was erased.');
-      } else if (result.status === 'full') {
+      } else if (result.status === 'full' || result.code === 'ROOM_FULL') {
         setValidationState('full');
-        setErrorMessage('This room is already full (2/2 participants reached).');
+        const plan = result.plan || 'FREE';
+        const max = result.maxMembers || (plan === 'PRO' ? 10 : 3);
+        setRoomPlan(plan);
+        setMaxMembers(max);
+        setErrorMessage(
+          plan === 'FREE'
+            ? `This Free room has reached its ${max}-member limit.`
+            : `This ${plan} room has reached its ${max}-member limit.`
+        );
       } else if (result.status === 'ended') {
         setValidationState('ended');
         setErrorMessage('This room is no longer active.');
@@ -161,8 +176,14 @@ function JoinRoomContent() {
     }
 
     try {
-      const { participant } = await joinRoom(cleanCode, participantId, participantName, password || undefined);
+      const { room, participant } = await joinRoom(
+        cleanCode,
+        participantId,
+        participantName,
+        password || undefined
+      );
 
+      // Persist session in sessionStorage
       if (typeof window !== 'undefined') {
         sessionStorage.setItem(
           `templink_session_${cleanCode}`,
@@ -179,65 +200,74 @@ function JoinRoomContent() {
       toast('Connected to private room!', 'success');
       router.push(`/room/${cleanCode}`);
     } catch (err: any) {
-      const errText = err.message || 'Unable to join room';
-      setErrorMessage(errText);
-      toast(errText, 'error');
       setIsJoining(false);
+      if (err.code === 'ROOM_FULL' || (err.message && err.message.toLowerCase().includes('full'))) {
+        setValidationState('full');
+        setErrorMessage(
+          err.plan === 'FREE' || roomPlan === 'FREE'
+            ? 'This Free room has reached its 3-member limit.'
+            : 'This Pro room has reached its 10-member limit.'
+        );
+      } else {
+        setErrorMessage(err.message || 'Unable to join room. Please check the code.');
+      }
+      toast(err.message || 'Unable to join room', 'error');
     }
   };
 
   return (
-    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-12 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] relative z-10 bg-[#05070B] text-slate-100">
+    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-12 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] min-h-[calc(100dvh-80px)] relative z-10 bg-[#05070B] text-slate-100">
       <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center -z-10">
-        <div className="w-[700px] h-[700px] bg-primary/5 rounded-full blur-[140px]" />
+        <div className="w-[600px] h-[600px] bg-primary/5 rounded-full blur-[130px]" />
       </div>
 
-      <BlurFade delay={0.1} className="w-full max-w-[560px] mt-4">
+      <BlurFade delay={0.1} className="w-full max-w-[500px] mt-4">
         <header className="mb-6 text-center">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0D111A] border border-white/10 text-primary-light text-xs font-semibold mb-2">
-            <span className="material-symbols-outlined text-[15px]">vpn_key</span>
-            One-Time Access Code
+            <span className="material-symbols-outlined text-[15px]">key</span>
+            Join Temporary Room
           </div>
           <h1 className="font-display text-3xl sm:text-4xl font-bold text-white mb-1">
             Join a Private Room
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Enter the one-time code or scan the QR code.
+            Enter the 8-character code or scan a QR code to enter.
           </p>
         </header>
 
         <form
           onSubmit={handleJoinSubmit}
-          className="glass-panel p-6 sm:p-8 rounded-3xl flex flex-col gap-6 border border-white/10 bg-[#080B12]/85 shadow-2xl"
+          className="relative glass-panel p-6 sm:p-8 rounded-3xl flex flex-col gap-6 border border-white/10 bg-[#080B12]/85 shadow-2xl overflow-hidden"
         >
-          {/* Room Code Input */}
+          {/* Border Beam Accent */}
+          <BorderBeam size={180} duration={9} colorFrom="#6366F1" colorTo="#38BDF8" />
+
+          {/* Room Code Input Field with Validation Feedback */}
           <div className="flex flex-col gap-2">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                Room Code
+              </label>
               <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  Room Code
-                </label>
                 {scannedBadge && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full animate-fade-in">
-                    <span className="material-symbols-outlined text-[12px]">check</span>
-                    QR Code Scanned
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-950/80 border border-emerald-500/30 text-[10px] font-bold text-emerald-300 animate-fade-in">
+                    <span className="material-symbols-outlined text-[12px]">qr_code_scanner</span>
+                    Auto-Filled from Scan
                   </span>
                 )}
-              </div>
-              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={handlePasteClipboard}
                   className="text-xs text-primary-light hover:underline flex items-center gap-1 font-semibold"
                 >
                   <span className="material-symbols-outlined text-[14px]">content_paste</span>
-                  Paste Link
+                  Paste
                 </button>
                 <Link
                   href="/scan"
-                  className="text-xs text-primary-light hover:underline flex items-center gap-1 font-semibold"
+                  className="text-xs text-primary-light hover:underline flex items-center gap-1 font-semibold ml-1"
                 >
-                  <span className="material-symbols-outlined text-[15px]">qr_code_scanner</span>
+                  <span className="material-symbols-outlined text-[14px]">qr_code_scanner</span>
                   Scan QR
                 </Link>
               </div>
@@ -251,11 +281,14 @@ function JoinRoomContent() {
                 placeholder="XXXX-XXXX"
                 value={code}
                 onChange={handleCodeChange}
-                className="w-full bg-[#05070B] border border-white/15 rounded-2xl px-4 py-4 font-mono text-center text-2xl sm:text-3xl font-bold tracking-[0.25em] text-primary-light placeholder:text-slate-700 focus:outline-none focus:border-primary shadow-inner uppercase transition-all"
+                disabled={isJoining}
+                className="w-full bg-[#05070B] border border-white/15 focus:border-primary rounded-2xl px-5 py-4 text-center font-mono text-xl sm:text-2xl font-bold tracking-[0.25em] uppercase text-white placeholder:text-slate-600 focus:outline-none shadow-inner transition-colors"
+                autoComplete="off"
+                spellCheck={false}
               />
 
-              {/* Status Indicator inside Input */}
-              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              {/* Live Validation Indicator */}
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
                 {validationState === 'checking' && (
                   <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                 )}
@@ -265,7 +298,7 @@ function JoinRoomContent() {
                   </span>
                 )}
                 {validationState === 'invalid' && (
-                  <span className="material-symbols-outlined text-error-rose text-[22px]">
+                  <span className="material-symbols-outlined text-red-400 text-[22px]">
                     cancel
                   </span>
                 )}
@@ -279,17 +312,20 @@ function JoinRoomContent() {
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Private Room Found
+                  Private Room Found ({validatedRoom.plan || 'Free'} Plan)
                 </span>
-                <span className="bg-[#121824] px-2.5 py-0.5 rounded-lg border border-white/5 text-[10px] font-mono font-semibold text-primary-light">
-                  1 / {validatedRoom.maxParticipants || 2} Connected
+                <span
+                  className="bg-[#121824] px-2.5 py-0.5 rounded-lg border border-white/5 text-[10px] font-mono font-semibold text-primary-light"
+                  aria-label={`${currentMembers} of ${maxMembers} members currently connected`}
+                >
+                  {currentMembers} / {maxMembers} Members Connected
                 </span>
               </div>
               <div className="flex items-center justify-between pt-1">
                 <span className="text-xs text-slate-400 font-medium">
                   Hosted by <strong className="text-white">{validatedRoom.creatorName}</strong>
                 </span>
-                <div className="flex items-center gap-1 text-xs">
+                <div className="flex items-center gap-1 text-xs font-mono">
                   <span className="material-symbols-outlined text-primary-light text-[15px]">timer</span>
                   <CountdownTimer expiresAt={validatedRoom.expiresAt} showIcon={false} />
                 </div>
@@ -338,8 +374,50 @@ function JoinRoomContent() {
             </div>
           )}
 
-          {/* Error Banner with clear recovery action */}
-          {errorMessage && (
+          {/* ROOM FULL Specialized Modal Banner */}
+          {validationState === 'full' && (
+            <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-200 flex flex-col gap-3 animate-fade-in">
+              <div className="flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-xl text-amber-400 shrink-0">
+                  group_off
+                </span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    Room Full
+                  </span>
+                  <span className="text-xs text-slate-300">
+                    {roomPlan === 'FREE'
+                      ? 'This Free room has reached its 3-member limit.'
+                      : `This Pro room has reached its ${maxMembers}-member limit.`}
+                  </span>
+                  {roomPlan === 'FREE' && (
+                    <span className="text-[11px] text-slate-400 mt-0.5">
+                      Upgrade to Pro to create rooms for up to 10 members.
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                {roomPlan === 'FREE' && (
+                  <Link
+                    href="/pricing"
+                    className="btn-primary py-2 px-3.5 rounded-xl text-xs font-bold uppercase tracking-wider text-center flex-1"
+                  >
+                    Upgrade to Pro
+                  </Link>
+                )}
+                <Link
+                  href="/create"
+                  className="btn-ghost py-2 px-3.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-center flex-1"
+                >
+                  Create New Room
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* General Error Banner */}
+          {errorMessage && validationState !== 'full' && (
             <div className="p-3.5 rounded-2xl bg-red-950/50 border border-red-500/30 text-red-200 text-xs flex items-center justify-between gap-2.5 animate-fade-in">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-red-400 shrink-0">
@@ -347,14 +425,14 @@ function JoinRoomContent() {
                 </span>
                 <span>{errorMessage}</span>
               </div>
-              {validationState === 'expired' || validationState === 'full' ? (
+              {validationState === 'expired' && (
                 <Link
                   href="/create"
                   className="btn-primary py-1 px-3 rounded-lg text-[10px] font-bold uppercase shrink-0"
                 >
                   Create New
                 </Link>
-              ) : null}
+              )}
             </div>
           )}
 
@@ -375,7 +453,7 @@ function JoinRoomContent() {
                 {isJoining ? (
                   <>
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    Connecting to Private Room...
+                    Connecting to Room...
                   </>
                 ) : (
                   <>

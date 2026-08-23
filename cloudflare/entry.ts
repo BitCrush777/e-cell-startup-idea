@@ -6,6 +6,19 @@ export { RoomDurableObject };
 
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+const ROOM_LIMITS = {
+  FREE: 3,
+  PRO: 10,
+  BUSINESS: 25,
+} as const;
+
+function getMaxMembersForPlan(plan?: string | null): number {
+  const p = (plan || 'FREE').toUpperCase();
+  if (p === 'PRO') return ROOM_LIMITS.PRO;
+  if (p === 'BUSINESS') return ROOM_LIMITS.BUSINESS;
+  return ROOM_LIMITS.FREE;
+}
+
 function generateSecureCode(): string {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
@@ -22,6 +35,24 @@ export default {
   async fetch(request: Request, env: any, ctx: any): Promise<Response> {
     const url = new URL(request.url);
     const origin = env.APP_URL || (url.protocol + '//' + url.host);
+
+    // 0. Static Asset Fast-Path serving via Cloudflare Workers Assets (solves CSS loading)
+    if (
+      env.ASSETS &&
+      (url.pathname.startsWith('/_next/static/') ||
+        url.pathname.startsWith('/icons/') ||
+        url.pathname === '/favicon.ico' ||
+        url.pathname === '/manifest.webmanifest' ||
+        url.pathname === '/sw.js' ||
+        url.pathname === '/offline.html')
+    ) {
+      try {
+        const assetRes = await env.ASSETS.fetch(request);
+        if (assetRes.status < 400) {
+          return assetRes;
+        }
+      } catch {}
+    }
 
     // 1. WebSocket Upgrade and Real-Time Durable Object channels (/api/rooms/:code/ws or Upgrade: websocket)
     if (
@@ -55,6 +86,8 @@ export default {
         const roomCode = generateSecureCode();
         const internalRoomId = 'room_' + crypto.randomUUID().replace(/-/g, '');
         const joinUrl = `${origin}/join/${roomCode}`;
+        const plan = (body.plan || 'FREE').toUpperCase();
+        const maxMembers = body.maxMembers || body.maxParticipants || getMaxMembersForPlan(plan);
 
         const id = env.ROOMS.idFromName(roomCode);
         const stub = env.ROOMS.get(id);
@@ -74,6 +107,9 @@ export default {
             passwordHash: passwordProtected ? password : undefined,
             allowFiles: body.allowFiles !== false && body.allowFileSharing !== false,
             notifyExpiration: body.notifyExpiration !== false,
+            plan,
+            maxMembers,
+            maxParticipants: maxMembers,
           }),
         });
 
@@ -89,6 +125,9 @@ export default {
             joinUrl,
             expiresAt: createdRoom.expiresAt,
             createdAt: createdRoom.createdAt,
+            plan,
+            maxMembers,
+            maxParticipants: maxMembers,
             room: createdRoom,
           }),
           {

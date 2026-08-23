@@ -379,9 +379,12 @@ export default function RoomChatPage() {
                   lock
                 </span>
               </h2>
-              <span className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 font-medium">
+              <span
+                className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 font-medium"
+                aria-label={`${room.participants.filter((p) => p.isOnline).length} of ${room.maxMembers || room.maxParticipants || 3} members currently connected`}
+              >
                 <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                {room.participants.length} connected • {connectionStatus}
+                {room.participants.filter((p) => p.isOnline).length} / {room.maxMembers || room.maxParticipants || 3} members • {connectionStatus}
               </span>
             </div>
           </div>
@@ -392,7 +395,7 @@ export default function RoomChatPage() {
               <CountdownTimer expiresAt={room.expiresAt} onExpire={handleExpire} />
               <span className="hidden sm:inline w-px h-3.5 bg-white/20" />
               <span className="hidden sm:inline text-[10px] font-bold text-primary-light uppercase tracking-wider">
-                Private Room
+                {room.plan || 'Free'} Room
               </span>
             </div>
 
@@ -449,7 +452,7 @@ export default function RoomChatPage() {
               })}
 
               {/* Typing Indicator */}
-              <TypingIndicator participantName={activeTypingLabel} />
+              <TypingIndicator typingNames={typingNames} />
 
               <div ref={messagesEndRef} />
             </div>

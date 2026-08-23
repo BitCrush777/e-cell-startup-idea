@@ -39,15 +39,20 @@ export interface Message {
   file?: FileAttachment;
 }
 
+export type RoomPlan = 'FREE' | 'PRO' | 'BUSINESS';
+
 export interface Room {
   id: string;             // Internal authoritative room ID (UUID / crypto string)
   roomId?: string;        // Alias for id
   roomCode: string;       // Public human-friendly code (e.g. K7XM-4P2Q)
-  joinUrl: string;        // Dynamic join URL (e.g. https://templink.app/join/K7XM-4P2Q)
+  joinUrl: string;        // Dynamic join URL (e.g. https://templink.in/join/K7XM-4P2Q)
   createdAt: number;
   expiresAt: number;
   durationMinutes: number;
-  maxParticipants: number;
+  plan: RoomPlan;         // Subscription tier: FREE (3), PRO (10), BUSINESS (25+)
+  maxMembers: number;     // Authoritative maximum members
+  maxParticipants: number;// Compatibility alias for maxMembers
+  currentMembers?: number;// Active member count
   participantLimit?: number;
   passwordProtected: boolean;
   password?: string;

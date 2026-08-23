@@ -7,8 +7,9 @@ import QrCode from '@/components/QrCode';
 import { useToast } from '@/components/ToastProvider';
 import { createRoom } from '@/lib/api';
 import { generateTemporaryIdentity, generateParticipantId } from '@/lib/identity';
+import { getMaxRoomMembers, ROOM_LIMITS, PlanType } from '@/lib/plans';
 import CountdownTimer from '@/components/CountdownTimer';
-import { Room } from '@/types';
+import { Room, RoomPlan } from '@/types';
 import { RealtimeClient } from '@/lib/realtime';
 import { BorderBeam } from '@/components/magicui/BorderBeam';
 import { BlurFade } from '@/components/magicui/BlurFade';
@@ -18,7 +19,10 @@ export default function CreateRoomPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Smart Defaults: 30 mins, 2 participants, password OFF, files OFF, notify ON
+  // User Plan: 'FREE' | 'PRO' | 'BUSINESS' (detected from session/auth or default 'FREE')
+  const [userPlan, setUserPlan] = useState<PlanType>('FREE');
+
+  // Smart Defaults: 30 mins, password OFF, files OFF, notify ON
   const [duration, setDuration] = useState<number>(30);
   const [customDuration, setCustomDuration] = useState<string>('45');
   const [isCustom, setIsCustom] = useState<boolean>(false);
@@ -38,6 +42,22 @@ export default function CreateRoomPage() {
 
   const realtimeClientRef = useRef<RealtimeClient | null>(null);
 
+  // Detect user plan if logged in
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user?.plan) {
+            setUserPlan(data.user.plan.toUpperCase() as PlanType);
+          }
+        }
+      } catch {}
+    }
+    checkAuth();
+  }, []);
+
   // Clean up realtime on unmount
   useEffect(() => {
     return () => {
@@ -54,6 +74,8 @@ export default function CreateRoomPage() {
     setIsCustom(true);
   };
 
+  const maxMembersAllowed = getMaxRoomMembers(userPlan);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (creationState === 'loading') return; // Prevent double-submit
@@ -68,7 +90,9 @@ export default function CreateRoomPage() {
     try {
       const room = await createRoom({
         durationMinutes: finalDuration,
-        maxParticipants: 2,
+        plan: userPlan as RoomPlan,
+        maxMembers: maxMembersAllowed,
+        maxParticipants: maxMembersAllowed,
         passwordProtected: requirePassword,
         password: requirePassword ? password : '',
         allowFiles,
@@ -108,7 +132,7 @@ export default function CreateRoomPage() {
       client.subscribe((event) => {
         if (event.type === 'participant_joined') {
           if (event.participant.participantId !== pid) {
-            setParticipantCount(2);
+            setParticipantCount((prev) => prev + 1);
             setSomeoneJoined(true);
             toast(`${event.participant.displayName} connected! Entering chat...`, 'success');
             setTimeout(() => {
@@ -140,42 +164,39 @@ export default function CreateRoomPage() {
 
   const handleNativeShare = async () => {
     if (!createdRoom) return;
-    if (typeof navigator !== 'undefined' && navigator.share) {
+    if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join my TempLink private room',
-          text: `Join this temporary private room on TempLink. Code: ${createdRoom.roomCode}`,
+          title: `Join TempLink Room ${createdRoom.roomCode}`,
+          text: `Join my private encrypted TempLink room: ${createdRoom.roomCode}`,
           url: createdRoom.joinUrl,
         });
-      } catch {
-        handleCopyLink();
-      }
+      } catch {}
     } else {
       handleCopyLink();
     }
   };
 
   const handleEnterChat = () => {
-    if (!createdRoom) return;
-    router.push(`/room/${createdRoom.roomCode}`);
+    if (createdRoom) {
+      router.push(`/room/${createdRoom.roomCode}`);
+    }
   };
 
-  // ROOM READY SCREEN
+  // SUCCESS / ROOM READY SCREEN
   if (creationState === 'ready' && createdRoom) {
-    return (
-      <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-12 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] relative z-10 bg-[#05070B] text-slate-100">
-        <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center -z-10">
-          <div className="w-[700px] h-[700px] bg-primary/10 rounded-full blur-[140px]" />
-        </div>
+    const maxCapacity = createdRoom.maxMembers || createdRoom.maxParticipants || maxMembersAllowed;
 
-        <BlurFade delay={0.1} className="w-full max-w-[560px] mt-4">
+    return (
+      <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-12 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] min-h-[calc(100dvh-80px)] relative z-10 bg-[#05070B] text-slate-100">
+        <BlurFade delay={0.1} className="w-full max-w-[520px] mt-4">
           <header className="mb-6 text-center">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 text-xs font-semibold mb-2 shadow-sm">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 text-xs font-semibold mb-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Room Provisioned on Edge
+              Room Created ({createdRoom.plan || userPlan} Plan • Up to {maxCapacity} Members)
             </div>
             <h1 className="font-display text-2xl sm:text-3xl font-bold text-white mb-1">
-              Your private room is ready
+              Your Private Room is Ready
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
               Share the one-time code or QR code to begin communicating.
@@ -191,12 +212,12 @@ export default function CreateRoomPage() {
               <div className="flex items-center gap-2.5">
                 <span className={`w-2.5 h-2.5 rounded-full ${someoneJoined ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'}`} />
                 <span className="text-xs font-semibold text-white">
-                  {someoneJoined ? 'Connected! Transitioning...' : 'Waiting for someone to join...'}
+                  {someoneJoined ? 'Connected! Transitioning...' : 'Waiting for participants...'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="bg-[#161E2E] text-primary-light font-mono text-xs font-bold px-2.5 py-1 rounded-lg border border-white/5">
-                  {participantCount} / {createdRoom.maxParticipants || 2}
+                  {participantCount} / {maxCapacity} members
                 </span>
                 <CountdownTimer expiresAt={createdRoom.expiresAt} showIcon={false} />
               </div>
@@ -210,7 +231,7 @@ export default function CreateRoomPage() {
                 size={180}
               />
               <span className="text-[11px] text-slate-400">
-                Scan with any smartphone camera to connect instantly
+                Scan with smartphone camera to connect instantly
               </span>
             </div>
 
@@ -273,7 +294,7 @@ export default function CreateRoomPage() {
 
   // CREATE CONFIGURATION SCREEN
   return (
-    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-12 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] relative z-10 bg-[#05070B] text-slate-100">
+    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-12 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] min-h-[calc(100dvh-80px)] relative z-10 bg-[#05070B] text-slate-100">
       <div className="absolute inset-0 pointer-events-none overflow-hidden flex items-center justify-center -z-10">
         <div className="w-[700px] h-[700px] bg-primary/5 rounded-full blur-[140px]" />
       </div>
@@ -288,7 +309,7 @@ export default function CreateRoomPage() {
             Create a Private Room
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Start a temporary conversation in seconds.
+            Start a temporary communication session in seconds.
           </p>
         </header>
 
@@ -384,25 +405,59 @@ export default function CreateRoomPage() {
 
           <hr className="border-white/10" />
 
-          {/* Section: Participants */}
+          {/* Section: Maximum Members & Plan Capacity */}
           <section className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Participants
+                Maximum Members
               </label>
               <span className="material-symbols-outlined text-slate-500 text-[18px]">
                 group
               </span>
             </div>
-            <div className="flex items-center gap-3 bg-[#0D111A] border border-white/10 rounded-xl px-4 py-3">
-              <span className="material-symbols-outlined text-primary-light text-[20px]">person</span>
-              <span className="text-xs sm:text-sm text-white flex-1 font-medium">
-                Fixed 1-on-1 Encrypted Channel
-              </span>
-              <span className="bg-[#161E2E] text-primary-light font-mono text-xs font-bold px-2.5 py-1 rounded-lg border border-white/5">
-                2 Max
+
+            <div className="flex items-center justify-between gap-3 bg-[#0D111A] border border-white/10 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary-light text-[20px]">
+                  {userPlan === 'PRO' ? 'workspace_premium' : userPlan === 'BUSINESS' ? 'corporate_fare' : 'group'}
+                </span>
+                <div>
+                  <span className="text-xs sm:text-sm text-white font-medium block">
+                    {userPlan === 'PRO'
+                      ? 'Pro Room (Up to 10 members)'
+                      : userPlan === 'BUSINESS'
+                      ? 'Business Room (Custom limit: up to 25 members)'
+                      : 'Free Room (Up to 3 members)'}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    Includes room creator and connecting participants
+                  </span>
+                </div>
+              </div>
+              <span className="bg-[#161E2E] text-primary-light font-mono text-xs font-bold px-2.5 py-1 rounded-lg border border-white/5 shrink-0">
+                {maxMembersAllowed} Max
               </span>
             </div>
+
+            {/* Upgrade prompt for Free users */}
+            {userPlan === 'FREE' && (
+              <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary-light text-[18px]">
+                    upgrade
+                  </span>
+                  <span className="text-slate-300">
+                    Need more people? <strong className="text-white">Upgrade to Pro</strong> for up to 10 members.
+                  </span>
+                </div>
+                <Link
+                  href="/pricing"
+                  className="text-primary-light font-semibold hover:underline shrink-0 ml-2"
+                >
+                  Upgrade
+                </Link>
+              </div>
+            )}
           </section>
 
           <hr className="border-white/10" />
@@ -520,23 +575,18 @@ export default function CreateRoomPage() {
               <ShimmerButton
                 type="submit"
                 disabled={creationState === 'loading'}
-                className="w-full sm:w-auto text-xs font-bold uppercase tracking-wider py-3.5 px-8 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full sm:w-auto text-xs font-bold uppercase tracking-wider px-8 py-3.5 rounded-xl shadow-lg"
               >
                 {creationState === 'loading' ? (
-                  <>
-                    <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    Creating Private Room...
-                  </>
-                ) : creationState === 'error' ? (
-                  <>
-                    Try Again
-                    <span className="material-symbols-outlined text-[18px]">refresh</span>
-                  </>
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    Creating Room...
+                  </span>
                 ) : (
-                  <>
-                    Create Private Room
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                  </>
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    Create Room ({maxMembersAllowed} Members)
+                  </span>
                 )}
               </ShimmerButton>
             </div>

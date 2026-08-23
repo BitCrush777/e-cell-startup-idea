@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRoom, getAllActiveRooms } from '@/lib/room-store';
 import { generateTemporaryIdentity } from '@/lib/identity';
+import { getMaxRoomMembers, PlanType } from '@/lib/plans';
+import { RoomPlan } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {
     const body: any = await req.json();
     const {
       durationMinutes = 15,
-      maxParticipants = 2,
+      plan = 'FREE',
+      maxMembers,
+      maxParticipants,
       passwordProtected = false,
       password = '',
       allowFiles = true,
@@ -15,9 +19,14 @@ export async function POST(req: NextRequest) {
       creatorName = generateTemporaryIdentity(),
     } = body;
 
+    const normalizedPlan = (plan || 'FREE').toUpperCase() as RoomPlan;
+    const computedMaxMembers = maxMembers || maxParticipants || getMaxRoomMembers(normalizedPlan as PlanType);
+
     const room = createRoom({
       durationMinutes: Number(durationMinutes),
-      maxParticipants: Number(maxParticipants),
+      plan: normalizedPlan,
+      maxMembers: computedMaxMembers,
+      maxParticipants: computedMaxMembers,
       passwordProtected: Boolean(passwordProtected),
       password: passwordProtected ? password : undefined,
       allowFiles: Boolean(allowFiles),
@@ -43,8 +52,11 @@ export async function GET() {
       createdAt: r.createdAt,
       expiresAt: r.expiresAt,
       durationMinutes: r.durationMinutes,
+      plan: r.plan || 'FREE',
       participantCount: r.participants.length,
-      maxParticipants: r.maxParticipants,
+      currentMembers: r.participants.length,
+      maxMembers: r.maxMembers || r.maxParticipants || 3,
+      maxParticipants: r.maxMembers || r.maxParticipants || 3,
       status: r.status,
       creatorName: r.creatorName,
     }));

@@ -131,15 +131,15 @@ export default function HomePage() {
           </div>
         </BlurFade>
 
-        {/* Hero Product Mockup with Magic UI BorderBeam */}
-        <BlurFade delay={0.6} className="w-full max-w-4xl">
-          <div className="relative glass-panel p-4 sm:p-6 rounded-3xl border border-white/10 shadow-2xl overflow-hidden bg-[#080B12]/80">
+        {/* Interactive App Preview */}
+        <BlurFade delay={0.6} className="w-full max-w-3xl">
+          <div className="glass-panel p-5 sm:p-7 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden bg-[#080B12]/90 backdrop-blur-xl">
             {/* Border Beam Accent */}
-            <BorderBeam size={250} duration={12} delay={0} colorFrom="#6366F1" colorTo="#A855F7" />
+            <BorderBeam size={220} duration={12} colorFrom="#6366F1" colorTo="#38BDF8" />
 
-            {/* Top Mockup Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5">
-              <div className="flex items-center gap-3">
+            {/* Window Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+              <div className="flex items-center gap-2">
                 <div className="flex gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-red-500/60" />
                   <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
@@ -156,7 +156,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 <span className="bg-[#0D111A] text-slate-300 text-xs px-2.5 py-1 rounded-lg border border-white/5 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  2/2 Connected
+                  2/3 Connected
                 </span>
                 <span className="bg-[#121824] text-amber-300 font-mono text-xs font-bold px-2.5 py-1 rounded-lg border border-amber-500/20 flex items-center gap-1">
                   <span className="material-symbols-outlined text-[14px]">timer</span>

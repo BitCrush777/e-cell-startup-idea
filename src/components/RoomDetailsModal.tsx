@@ -107,7 +107,7 @@ export default function RoomDetailsModal({
         {/* Participants */}
         <div className="space-y-2">
           <h4 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-            Participants ({room.participants.length}/{room.maxParticipants})
+            Participants ({room.participants.length}/{room.maxMembers || room.maxParticipants || 3})
           </h4>
           <ul className="space-y-1.5">
             {room.participants.map((p) => (

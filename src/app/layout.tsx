@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     type: 'website',
     url: 'https://templink.in',
     title: 'TempLink — Private conversations. Temporary by design.',
-    description: 'Disposable 1-on-1 encrypted channels that vaporize on expiration. Zero permanent digital footprint.',
+    description: 'Disposable temporary private rooms that vaporize on expiration. Zero permanent digital footprint.',
     siteName: 'TempLink',
     images: [
       {
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary',
     title: 'TempLink — Private conversations. Temporary by design.',
-    description: 'Disposable 1-on-1 encrypted channels with zero permanent server trace.',
+    description: 'Disposable temporary private rooms with zero permanent server trace.',
     images: ['/icons/icon-512.png'],
   },
 };

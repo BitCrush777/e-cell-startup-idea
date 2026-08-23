@@ -7,7 +7,7 @@ import { useToast } from '@/components/ToastProvider';
 import { joinRoom, validateRoom } from '@/lib/api';
 import { generateTemporaryIdentity, generateParticipantId } from '@/lib/identity';
 import CountdownTimer from '@/components/CountdownTimer';
-import { Room } from '@/types';
+import { Room, RoomPlan } from '@/types';
 
 export default function JoinByRoomCodePage() {
   const params = useParams();
@@ -22,6 +22,9 @@ export default function JoinByRoomCodePage() {
   const [isJoining, setIsJoining] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<'not_found' | 'expired' | 'full' | 'ended' | null>(null);
+  const [roomPlan, setRoomPlan] = useState<RoomPlan>('FREE');
+  const [maxMembers, setMaxMembers] = useState<number>(3);
+  const [currentMembers, setCurrentMembers] = useState<number>(1);
 
   useEffect(() => {
     if (!roomCode) return;
@@ -32,11 +35,27 @@ export default function JoinByRoomCodePage() {
       const res = await validateRoom(roomCode);
       if (!res.valid || !res.room) {
         setErrorStatus(res.status as any);
-        setErrorMessage(res.error || 'This room is expired or does not exist.');
+        if (res.status === 'full' || res.code === 'ROOM_FULL') {
+          const p = res.plan || 'FREE';
+          const max = res.maxMembers || (p === 'PRO' ? 10 : 3);
+          setRoomPlan(p);
+          setMaxMembers(max);
+          setErrorMessage(
+            p === 'FREE'
+              ? `This Free room has reached its ${max}-member limit.`
+              : `This ${p} room has reached its ${max}-member limit.`
+          );
+        } else {
+          setErrorMessage(res.error || 'This room is expired or does not exist.');
+        }
         setIsLoading(false);
         return;
       }
+
       setRoom(res.room);
+      setRoomPlan(res.room.plan || 'FREE');
+      setMaxMembers(res.room.maxMembers || res.room.maxParticipants || 3);
+      setCurrentMembers(res.currentMembers || res.room.participants?.length || 1);
       setIsLoading(false);
     }
 
@@ -83,18 +102,27 @@ export default function JoinByRoomCodePage() {
       toast('Connected to private room!', 'success');
       router.push(`/room/${roomCode}`);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Unable to join room');
-      toast(err.message || 'Unable to join room', 'error');
       setIsJoining(false);
+      if (err.code === 'ROOM_FULL' || (err.message && err.message.toLowerCase().includes('full'))) {
+        setErrorStatus('full');
+        setErrorMessage(
+          err.plan === 'FREE' || roomPlan === 'FREE'
+            ? 'This Free room has reached its 3-member limit.'
+            : 'This Pro room has reached its 10-member limit.'
+        );
+      } else {
+        setErrorMessage(err.message || 'Unable to join room');
+      }
+      toast(err.message || 'Unable to join room', 'error');
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#051424]">
+      <div className="flex h-screen items-center justify-center bg-[#05070B]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          <span className="text-xs font-mono-timer text-on-surface-variant uppercase tracking-wider">
+          <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">
             Validating Private Room {roomCode}...
           </span>
         </div>
@@ -104,21 +132,40 @@ export default function JoinByRoomCodePage() {
 
   if (errorMessage && !room) {
     return (
-      <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-16 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
-        <div className="glass-panel p-8 rounded-3xl max-w-md w-full text-center flex flex-col items-center gap-4 border border-white/10 bg-[#0D1C2D]/90 shadow-2xl animate-fade-in">
-          <span className="material-symbols-outlined text-4xl text-error-rose">error</span>
-          <h2 className="font-display font-bold text-xl text-on-surface">Room Unavailable</h2>
-          <p className="text-xs sm:text-sm text-on-surface-variant">{errorMessage}</p>
-          <div className="flex gap-3 mt-2 w-full">
+      <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-16 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] min-h-[calc(100dvh-80px)] bg-[#05070B] text-slate-100">
+        <div className="glass-panel p-8 rounded-3xl max-w-md w-full text-center flex flex-col items-center gap-4 border border-white/10 bg-[#080B12]/90 shadow-2xl animate-fade-in">
+          <span className="material-symbols-outlined text-4xl text-amber-400">
+            {errorStatus === 'full' ? 'group_off' : 'error'}
+          </span>
+          <h2 className="font-display font-bold text-xl text-white">
+            {errorStatus === 'full' ? 'Room Full' : 'Room Unavailable'}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-400">{errorMessage}</p>
+
+          {errorStatus === 'full' && roomPlan === 'FREE' && (
+            <p className="text-[11px] text-slate-500">
+              Upgrade to Pro for up to 10 members per room.
+            </p>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3 mt-2 w-full">
+            {errorStatus === 'full' && roomPlan === 'FREE' && (
+              <Link
+                href="/pricing"
+                className="btn-primary flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-center"
+              >
+                Upgrade to Pro
+              </Link>
+            )}
             <Link
               href="/join"
-              className="btn-ghost flex-1 py-2.5 rounded-xl text-xs font-semibold uppercase text-center"
+              className="btn-ghost flex-1 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-center"
             >
               Enter Code
             </Link>
             <Link
               href="/create"
-              className="btn-primary flex-1 py-2.5 rounded-xl text-xs font-bold uppercase text-center"
+              className="btn-primary flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-center"
             >
               Create New
             </Link>
@@ -129,42 +176,45 @@ export default function JoinByRoomCodePage() {
   }
 
   return (
-    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-12 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] relative z-10">
-      <div className="w-full max-w-[540px] animate-fade-in-up mt-4">
+    <main className="flex-1 w-full max-w-container-max mx-auto px-4 md:px-lg py-12 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] min-h-[calc(100dvh-80px)] relative z-10 bg-[#05070B] text-slate-100">
+      <div className="w-full max-w-[540px] animate-fade-in mt-4">
         <header className="mb-6 text-center">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 text-xs font-semibold mb-2 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Active Private Channel
+            Active Private Room ({room?.plan || roomPlan} Plan)
           </div>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold text-on-surface mb-1">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold text-white mb-1">
             Join Room {roomCode}
           </h1>
-          <p className="text-xs sm:text-sm text-on-surface-variant">
-            Zero-knowledge temporary chat with auto-destruct.
+          <p className="text-xs sm:text-sm text-slate-400">
+            Ephemeral temporary chat with zero stored history.
           </p>
         </header>
 
         <form
           onSubmit={handleJoin}
-          className="glass-panel ambient-glow p-6 sm:p-8 rounded-3xl flex flex-col gap-6 border border-white/15 bg-[#0D1C2D]/85 shadow-2xl"
+          className="glass-panel p-6 sm:p-8 rounded-3xl flex flex-col gap-6 border border-white/15 bg-[#080B12]/85 shadow-2xl"
         >
           {/* Room Confirmation Card */}
           {room && (
-            <div className="p-4 bg-[#051424] rounded-2xl border border-white/10 flex flex-col gap-2.5 shadow-inner">
+            <div className="p-4 bg-[#05070B] rounded-2xl border border-white/10 flex flex-col gap-2.5 shadow-inner">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-primary tracking-wider">
-                  Channel Details
+                <span className="text-[10px] uppercase font-bold text-primary-light tracking-wider">
+                  Room Capacity
                 </span>
-                <span className="bg-[#1c2b3c] text-primary font-mono-timer text-xs font-bold px-2.5 py-0.5 rounded-lg border border-white/5">
-                  1 / {room.maxParticipants || 2} Connected
+                <span
+                  className="bg-[#121824] text-primary-light font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg border border-white/5"
+                  aria-label={`${currentMembers} of ${maxMembers} members currently connected`}
+                >
+                  {currentMembers} / {maxMembers} Members Connected
                 </span>
               </div>
               <div className="flex items-center justify-between pt-1">
-                <span className="text-xs text-on-surface-variant">
-                  Hosted by <strong className="text-on-surface">{room.creatorName}</strong>
+                <span className="text-xs text-slate-400 font-medium">
+                  Hosted by <strong className="text-white">{room.creatorName}</strong>
                 </span>
-                <div className="flex items-center gap-1 text-xs font-mono-timer">
-                  <span className="material-symbols-outlined text-primary text-[15px]">timer</span>
+                <div className="flex items-center gap-1 text-xs font-mono">
+                  <span className="material-symbols-outlined text-primary-light text-[15px]">timer</span>
                   <CountdownTimer expiresAt={room.expiresAt} showIcon={false} />
                 </div>
               </div>
@@ -172,23 +222,23 @@ export default function JoinByRoomCodePage() {
           )}
 
           {/* Identity Assignment */}
-          <div className="flex items-center justify-between p-3.5 bg-[#051424] rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between p-3.5 bg-[#0D111A] rounded-2xl border border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#1c2b3c] flex items-center justify-center text-primary">
+              <div className="w-8 h-8 rounded-full bg-[#161E2E] flex items-center justify-center text-primary-light">
                 <span className="material-symbols-outlined text-[16px]">fingerprint</span>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-semibold text-on-surface-variant tracking-wider block">
+                <span className="text-[10px] uppercase font-semibold text-slate-500 tracking-wider block">
                   Joining as
                 </span>
-                <span className="text-xs font-semibold text-on-surface">{participantName}</span>
+                <span className="text-xs font-semibold text-white">{participantName}</span>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setParticipantName(generateTemporaryIdentity())}
               disabled={isJoining}
-              className="text-xs text-primary hover:underline font-medium disabled:opacity-50"
+              className="text-xs text-primary-light hover:underline font-medium disabled:opacity-50"
             >
               Change ID
             </button>
@@ -207,7 +257,7 @@ export default function JoinByRoomCodePage() {
                 placeholder="Enter secret room password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#051424] border border-amber-500/30 rounded-xl px-4 py-3 text-xs text-on-surface focus:outline-none focus:border-amber-400"
+                className="w-full bg-[#05070B] border border-amber-500/30 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-400"
               />
             </div>
           )}
@@ -233,12 +283,12 @@ export default function JoinByRoomCodePage() {
             <button
               type="submit"
               disabled={isJoining}
-              className="btn-primary flex-1 py-3.5 px-6 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 order-1 sm:order-2 shadow-[0_0_20px_rgba(192,193,255,0.35)] disabled:opacity-50"
+              className="btn-primary flex-1 py-3.5 px-6 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 order-1 sm:order-2 shadow-[0_0_20px_rgba(99,102,241,0.35)] disabled:opacity-50"
             >
               {isJoining ? (
                 <>
                   <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  Connecting to Private Room...
+                  Connecting to Room...
                 </>
               ) : (
                 <>

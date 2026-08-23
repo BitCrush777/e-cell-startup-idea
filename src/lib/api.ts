@@ -1,5 +1,6 @@
-import { Room, Participant, Message } from '@/types';
+import { Room, Participant, Message, RoomPlan } from '@/types';
 import { getJoinUrl } from '@/lib/urls';
+import { getMaxRoomMembers } from '@/lib/plans';
 
 // API Base URL (Configurable for Cloudflare Worker URL or local Next.js proxy)
 const API_BASE_URL =
@@ -9,6 +10,8 @@ const API_BASE_URL =
 export interface CreateRoomParams {
   durationMinutes?: number;
   duration?: number;
+  plan?: RoomPlan;
+  maxMembers?: number;
   maxParticipants?: number;
   participantLimit?: number;
   passwordProtected?: boolean;
@@ -28,19 +31,27 @@ export interface RoomValidationResult {
   valid: boolean;
   status: ValidationStatus;
   error?: string;
+  code?: string;
   room?: Room;
+  currentMembers?: number;
+  maxMembers?: number;
+  plan?: RoomPlan;
 }
 
 export async function createRoom(params: CreateRoomParams): Promise<Room> {
   const durationMinutes = params.durationMinutes || (params.duration ? Math.floor(params.duration / 60) : 30);
   const requestId = params.requestId || 'req_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+  const plan: RoomPlan = (params.plan || 'FREE').toUpperCase() as RoomPlan;
+  const maxMembers = params.maxMembers || params.maxParticipants || params.participantLimit || getMaxRoomMembers(plan);
 
   const res = await fetch(`${API_BASE_URL}/api/rooms`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       durationMinutes,
-      maxParticipants: params.maxParticipants || params.participantLimit || 2,
+      plan,
+      maxMembers,
+      maxParticipants: maxMembers,
       passwordProtected: Boolean(params.passwordProtected || params.requirePassword),
       password: params.password || '',
       allowFiles: Boolean(params.allowFiles || params.allowFileSharing),
@@ -58,6 +69,9 @@ export async function createRoom(params: CreateRoomParams): Promise<Room> {
 
   const room: Room = data.room || data;
   room.joinUrl = getJoinUrl(room.roomCode);
+  room.plan = room.plan || plan;
+  room.maxMembers = room.maxMembers || maxMembers;
+  room.maxParticipants = room.maxMembers;
 
   return room;
 }
@@ -78,6 +92,9 @@ export async function getRoom(roomCode: string): Promise<Room> {
 
   const room: Room = data.room || data;
   room.joinUrl = getJoinUrl(room.roomCode);
+  if (!room.plan) room.plan = 'FREE';
+  if (!room.maxMembers) room.maxMembers = room.maxParticipants || getMaxRoomMembers(room.plan);
+  room.maxParticipants = room.maxMembers;
 
   return room;
 }
@@ -101,8 +118,18 @@ export async function validateRoom(roomCode: string): Promise<RoomValidationResu
       if (errText.includes('expired')) {
         return { valid: false, status: 'expired', error: 'This room has expired.' };
       }
-      if (errText.includes('full')) {
-        return { valid: false, status: 'full', error: 'This room is already full.' };
+      if (errText.includes('full') || data.code === 'ROOM_FULL') {
+        const max = data.maxMembers || 3;
+        const p = data.plan || 'Free';
+        return {
+          valid: false,
+          status: 'full',
+          code: 'ROOM_FULL',
+          currentMembers: data.currentMembers || max,
+          maxMembers: max,
+          plan: p,
+          error: `This ${p} room has reached its ${max}-member limit.`,
+        };
       }
       if (errText.includes('ended')) {
         return { valid: false, status: 'ended', error: 'This room is no longer active.' };
@@ -111,26 +138,48 @@ export async function validateRoom(roomCode: string): Promise<RoomValidationResu
     }
 
     const room: Room = data.room;
+    const maxMembers = room.maxMembers || room.maxParticipants || getMaxRoomMembers(room.plan);
+    const plan = room.plan || 'FREE';
+
     if (Date.now() >= room.expiresAt || room.status === 'EXPIRED') {
       return { valid: false, status: 'expired', error: 'This room has expired.' };
     }
 
-    if (room.participants && room.participants.length >= (room.maxParticipants || 2)) {
-      return { valid: false, status: 'full', error: 'This room is already full (2/2 participants).' };
+    if (room.participants && room.participants.length >= maxMembers) {
+      return {
+        valid: false,
+        status: 'full',
+        code: 'ROOM_FULL',
+        currentMembers: room.participants.length,
+        maxMembers,
+        plan,
+        error: `This ${plan} room has reached its ${maxMembers}-member limit.`,
+      };
     }
 
-    return { valid: true, status: 'valid', room };
+    return { valid: true, status: 'valid', room, currentMembers: room.participants?.length || 1, maxMembers, plan };
   } catch (err: any) {
     // Fallback direct room fetch check
     try {
       const room = await getRoom(code);
+      const maxMembers = room.maxMembers || room.maxParticipants || getMaxRoomMembers(room.plan);
+      const plan = room.plan || 'FREE';
+
       if (Date.now() >= room.expiresAt || room.status === 'EXPIRED') {
         return { valid: false, status: 'expired', error: 'This room has expired.' };
       }
-      if (room.participants && room.participants.length >= (room.maxParticipants || 2)) {
-        return { valid: false, status: 'full', error: 'This room is already full (2/2 participants).' };
+      if (room.participants && room.participants.length >= maxMembers) {
+        return {
+          valid: false,
+          status: 'full',
+          code: 'ROOM_FULL',
+          currentMembers: room.participants.length,
+          maxMembers,
+          plan,
+          error: `This ${plan} room has reached its ${maxMembers}-member limit.`,
+        };
       }
-      return { valid: true, status: 'valid', room };
+      return { valid: true, status: 'valid', room, currentMembers: room.participants?.length || 1, maxMembers, plan };
     } catch {
       return { valid: false, status: 'not_found', error: 'Room not found.' };
     }
@@ -157,7 +206,12 @@ export async function joinRoom(
 
   const data: any = await res.json();
   if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Failed to join room');
+    const err: any = new Error(data.error || 'Failed to join room');
+    err.code = data.code;
+    err.currentMembers = data.currentMembers;
+    err.maxMembers = data.maxMembers;
+    err.plan = data.plan;
+    throw err;
   }
 
   return { room: data.room, participant: data.participant };
