@@ -25,7 +25,7 @@ export interface CreateRoomParams {
   requestId?: string;
 }
 
-export type ValidationStatus = 'valid' | 'not_found' | 'expired' | 'full' | 'ended' | 'error';
+export type ValidationStatus = 'valid' | 'not_found' | 'expired' | 'full' | 'ended' | 'terminated' | 'error';
 
 export interface RoomValidationResult {
   valid: boolean;
@@ -52,25 +52,25 @@ export async function createRoom(params: CreateRoomParams): Promise<Room> {
       plan,
       maxMembers,
       maxParticipants: maxMembers,
-      passwordProtected: Boolean(params.passwordProtected || params.requirePassword),
-      password: params.password || '',
-      allowFiles: Boolean(params.allowFiles || params.allowFileSharing),
+      passwordProtected: params.passwordProtected || params.requirePassword,
+      password: params.password,
+      allowFiles: params.allowFiles !== false && params.allowFileSharing !== false,
       notifyExpiration: params.notifyExpiration !== false,
       creatorParticipantId: params.creatorParticipantId,
-      creatorName: params.creatorName || 'Creator',
+      creatorName: params.creatorName,
       requestId,
     }),
   });
 
   const data: any = await res.json();
   if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Unable to create room. Please try again.');
+    throw new Error(data.error || 'Failed to create room');
   }
 
-  const room: Room = data.room || data;
+  const room: Room = data.room;
   room.joinUrl = getJoinUrl(room.roomCode);
-  room.plan = room.plan || plan;
-  room.maxMembers = room.maxMembers || maxMembers;
+  if (!room.plan) room.plan = plan;
+  if (!room.maxMembers) room.maxMembers = maxMembers;
   room.maxParticipants = room.maxMembers;
 
   return room;
@@ -87,7 +87,9 @@ export async function getRoom(roomCode: string): Promise<Room> {
 
   const data: any = await res.json();
   if (!res.ok || !data.success) {
-    throw new Error(data.error || 'Room not found or has expired');
+    const err = new Error(data.code || data.error || 'Room not found or has expired');
+    (err as any).code = data.code;
+    throw err;
   }
 
   const room: Room = data.room || data;
@@ -115,6 +117,14 @@ export async function validateRoom(roomCode: string): Promise<RoomValidationResu
     const data: any = await res.json();
     if (!res.ok || !data.valid || !data.room) {
       const errText = (data.error || '').toLowerCase();
+      if (errText.includes('violation') || errText.includes('terminated') || data.code === 'ROOM_TERMINATED') {
+        return {
+          valid: false,
+          status: 'terminated',
+          code: 'ROOM_TERMINATED',
+          error: "This room was closed because of repeated violations of the conversation guidelines.",
+        };
+      }
       if (errText.includes('expired')) {
         return { valid: false, status: 'expired', error: 'This room has expired.' };
       }

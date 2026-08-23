@@ -21,7 +21,7 @@ export default function JoinByRoomCodePage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isJoining, setIsJoining] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [errorStatus, setErrorStatus] = useState<'not_found' | 'expired' | 'full' | 'ended' | null>(null);
+  const [errorStatus, setErrorStatus] = useState<'not_found' | 'expired' | 'full' | 'ended' | 'terminated' | null>(null);
   const [roomPlan, setRoomPlan] = useState<RoomPlan>('FREE');
   const [maxMembers, setMaxMembers] = useState<number>(3);
   const [currentMembers, setCurrentMembers] = useState<number>(1);
@@ -34,8 +34,11 @@ export default function JoinByRoomCodePage() {
       setErrorMessage(null);
       const res = await validateRoom(roomCode);
       if (!res.valid || !res.room) {
-        setErrorStatus(res.status as any);
-        if (res.status === 'full' || res.code === 'ROOM_FULL') {
+        if (res.status === 'terminated' || res.code === 'ROOM_TERMINATED') {
+          setErrorStatus('terminated');
+          setErrorMessage("This room was closed because of repeated violations of the conversation guidelines.");
+        } else if (res.status === 'full' || res.code === 'ROOM_FULL') {
+          setErrorStatus('full');
           const p = res.plan || 'FREE';
           const max = res.maxMembers || (p === 'PRO' ? 10 : 3);
           setRoomPlan(p);
@@ -46,6 +49,7 @@ export default function JoinByRoomCodePage() {
               : `This ${p} room has reached its ${max}-member limit.`
           );
         } else {
+          setErrorStatus(res.status as any || 'not_found');
           setErrorMessage(res.error || 'This room is expired or does not exist.');
         }
         setIsLoading(false);

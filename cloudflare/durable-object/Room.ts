@@ -1,5 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
+import { defaultModerator, SAFE_ROOM_CONFIG } from '../moderation/word-filter';
+
 export interface Participant {
   participantId: string;
   displayName: string;
@@ -29,7 +31,7 @@ export interface Message {
   file?: FileAttachment;
 }
 
-export type RoomStatus = 'WAITING' | 'ACTIVE' | 'EXPIRING' | 'EXPIRED' | 'ENDED';
+export type RoomStatus = 'WAITING' | 'ACTIVE' | 'EXPIRING' | 'EXPIRED' | 'ENDED' | 'MODERATION_TERMINATED';
 export type RoomPlan = 'FREE' | 'PRO' | 'BUSINESS';
 
 export interface RoomState {
@@ -64,6 +66,32 @@ export type RoomEvent =
   | { type: 'room_expiring'; roomCode: string; remainingSeconds: number }
   | { type: 'room_expired'; roomCode: string; reason: string }
   | { type: 'room_ended'; roomCode: string; reason: string }
+  | {
+      type: 'moderation_warning';
+      eventId: string;
+      roomCode: string;
+      participantId: string;
+      warningNumber: number;
+      warningsRemaining: number;
+      maxWarnings: number;
+      finalWarning: boolean;
+      reason: string;
+      message: string;
+    }
+  | {
+      type: 'room_terminated';
+      roomCode: string;
+      reason: 'MODERATION_VIOLATION' | 'ADMIN_ACTION' | 'POLICY_VIOLATION';
+      message: string;
+    }
+  | {
+      type: 'message_blocked';
+      eventId: string;
+      roomCode: string;
+      participantId: string;
+      reason: string;
+      message: string;
+    }
   | { type: 'connection_status'; status: 'connected' | 'reconnecting' | 'disconnected' }
   | { type: 'pong'; timestamp: number };
 
@@ -80,6 +108,10 @@ export class RoomDurableObject {
   private room: RoomState | null = null;
   // Authoritative WebSocket session mapping: Socket -> { participantId, displayName }
   private sessions: Map<WebSocket, { participantId: string; displayName: string }> = new Map();
+  // SafeRoom moderation state tracked strictly per participant
+  private warningsByParticipant: Map<string, number> = new Map();
+  // Message rate-limiting window tracker per participantId
+  private messageTimestamps: Map<string, number[]> = new Map();
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
@@ -121,7 +153,7 @@ export class RoomDurableObject {
             roomCode: inferredCode.toUpperCase().trim(),
             senderId: 'system',
             senderName: 'TempLink System',
-            content: 'Private channel established. End-to-end ephemeral session active.',
+            content: 'Private channel established. SafeRoom active protection enabled.',
             timestamp: now,
             type: 'system',
           },
@@ -143,7 +175,12 @@ export class RoomDurableObject {
       this.room.participantLimit = this.room.maxMembers;
 
       // Check server-authoritative expiration
-      if (Date.now() >= this.room.expiresAt && this.room.status !== 'EXPIRED' && this.room.status !== 'ENDED') {
+      if (
+        Date.now() >= this.room.expiresAt &&
+        this.room.status !== 'EXPIRED' &&
+        this.room.status !== 'ENDED' &&
+        this.room.status !== 'MODERATION_TERMINATED'
+      ) {
         this.room.status = 'EXPIRED';
         await this.saveRoom();
         this.broadcast({
@@ -188,7 +225,7 @@ export class RoomDurableObject {
 
   // Cloudflare Alarm for deterministic, server-level expiration zeroization
   async alarm(): Promise<void> {
-    if (this.room) {
+    if (this.room && this.room.status !== 'MODERATION_TERMINATED') {
       this.room.status = 'EXPIRED';
       this.broadcast({
         type: 'room_expired',
@@ -197,7 +234,6 @@ export class RoomDurableObject {
       });
       this.closeAllSockets(1000, 'Room expired');
     }
-    // Wipe volatile storage cleanly
     await this.state.storage.deleteAll();
     this.room = null;
   }
@@ -267,7 +303,7 @@ export class RoomDurableObject {
             roomCode,
             senderId: 'system',
             senderName: 'TempLink System',
-            content: `Private room initialized (${plan} plan: up to ${maxMembers} members). Ephemeral TTL: ${data.durationMinutes || 15}m.`,
+            content: `Private room initialized (${plan} plan: up to ${maxMembers} members). SafeRoom active.`,
             timestamp: now,
             type: 'system',
           },
@@ -284,7 +320,7 @@ export class RoomDurableObject {
       });
     }
 
-    // 3. Get Room State
+    // 3. Get Room State / Validate
     if ((url.pathname === '/state' || url.pathname.endsWith('/validate')) && request.method === 'GET') {
       if (!this.room) {
         return new Response(JSON.stringify({ success: false, valid: false, error: 'Room not found' }), {
@@ -292,6 +328,20 @@ export class RoomDurableObject {
           headers: { 'Content-Type': 'application/json' },
         });
       }
+
+      if (this.room.status === 'MODERATION_TERMINATED') {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            valid: false,
+            status: 'terminated',
+            code: 'ROOM_TERMINATED',
+            error: "This room was closed because of repeated violations of the conversation guidelines.",
+          }),
+          { status: 410, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
       return new Response(JSON.stringify({ success: true, valid: true, room: this.room }), {
         headers: { 'Content-Type': 'application/json' },
       });
@@ -304,6 +354,17 @@ export class RoomDurableObject {
           status: 404,
           headers: { 'Content-Type': 'application/json' },
         });
+      }
+
+      if (this.room.status === 'MODERATION_TERMINATED') {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            code: 'ROOM_TERMINATED',
+            error: "This room was closed because of repeated violations of the conversation guidelines.",
+          }),
+          { status: 410, headers: { 'Content-Type': 'application/json' } }
+        );
       }
 
       if (this.room.status === 'EXPIRED' || this.room.status === 'ENDED' || Date.now() >= this.room.expiresAt) {
@@ -330,7 +391,6 @@ export class RoomDurableObject {
       const maxMembers = this.room.maxMembers || this.room.participantLimit || 3;
 
       if (!participant) {
-        // Authoritative server-side member limit enforcement
         if (this.room.participants.length >= maxMembers) {
           return new Response(
             JSON.stringify({
@@ -389,31 +449,71 @@ export class RoomDurableObject {
       });
     }
 
-    // 5. Post Message
+    // 5. Post Message (REST)
     if (url.pathname === '/messages' && request.method === 'POST') {
-      if (!this.room || this.room.status === 'EXPIRED' || this.room.status === 'ENDED') {
-        return new Response(JSON.stringify({ success: false, error: 'Room unavailable' }), {
+      if (!this.room || this.room.status !== 'ACTIVE' && this.room.status !== 'WAITING') {
+        return new Response(JSON.stringify({ success: false, error: 'Room unavailable or terminated' }), {
           status: 410,
           headers: { 'Content-Type': 'application/json' },
         });
       }
 
       const body: any = await request.json();
-      const sender = this.room.participants.find((p) => p.participantId === body.senderId);
+      const content = body.content || '';
 
+      // SafeRoom server-side moderation check
+      const modResult = defaultModerator.moderate(content);
+      if (!modResult.allowed) {
+        const participantId = body.senderId || 'unknown';
+        const warnings = (this.warningsByParticipant.get(participantId) || 0) + 1;
+        this.warningsByParticipant.set(participantId, warnings);
+
+        if (warnings >= SAFE_ROOM_CONFIG.terminateOnViolationNumber) {
+          this.room.status = 'MODERATION_TERMINATED';
+          this.room.messages = [];
+          await this.saveRoom();
+          this.broadcast({
+            type: 'room_terminated',
+            roomCode: this.room.roomCode,
+            reason: 'MODERATION_VIOLATION',
+            message: "This temporary room was closed because of repeated violations of the conversation guidelines.",
+          });
+          this.closeAllSockets(1008, 'Room terminated');
+          return new Response(
+            JSON.stringify({
+              success: false,
+              code: 'ROOM_TERMINATED',
+              error: 'Room terminated due to repeated guideline violations.',
+            }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            code: 'MODERATION_VIOLATION',
+            warningNumber: warnings,
+            warningsRemaining: Math.max(0, SAFE_ROOM_CONFIG.maxWarnings - warnings),
+            error: 'Message blocked by SafeRoom.',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const sender = this.room.participants.find((p) => p.participantId === body.senderId);
       const msg: Message = {
-        id: body.id || 'msg_' + Math.random().toString(36).substring(2, 9),
+        id: body.id || 'msg_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36),
         roomCode: this.room.roomCode,
         senderId: body.senderId || 'unknown',
         senderName: sender?.displayName || body.senderName || 'Anonymous',
-        content: body.content || '',
+        content,
         timestamp: Date.now(),
         type: body.type || 'text',
         file: body.file,
       };
 
       this.room.messages.push(msg);
-      // Keep last 100 messages in memory
       if (this.room.messages.length > 100) {
         this.room.messages = this.room.messages.slice(-100);
       }
@@ -504,13 +604,25 @@ export class RoomDurableObject {
             roomCode: inferredCode.toUpperCase().trim(),
             senderId: 'system',
             senderName: 'TempLink System',
-            content: 'Private channel established. End-to-end ephemeral session active.',
+            content: 'Private channel established. SafeRoom active protection enabled.',
             timestamp: now,
             type: 'system',
           },
         ],
       };
       this.saveRoom();
+    }
+
+    // Rejection check for Terminated / Expired / Ended rooms
+    if (this.room?.status === 'MODERATION_TERMINATED') {
+      return new Response(
+        JSON.stringify({
+          error: 'ROOM_TERMINATED',
+          code: 'ROOM_TERMINATED',
+          message: 'This room was closed because of repeated violations of the conversation guidelines.',
+        }),
+        { status: 410 }
+      );
     }
 
     if (!this.room || this.room.status === 'EXPIRED' || this.room.status === 'ENDED' || Date.now() >= this.room.expiresAt) {
@@ -590,21 +702,120 @@ export class RoomDurableObject {
       try {
         const data = JSON.parse(event.data as string);
         const session = this.sessions.get(server);
-        if (!session || !this.room || this.room.status === 'EXPIRED' || this.room.status === 'ENDED') {
+        if (!session || !this.room) return;
+
+        // Block all activity if room is terminated or expired
+        if (
+          this.room.status === 'MODERATION_TERMINATED' ||
+          this.room.status === 'EXPIRED' ||
+          this.room.status === 'ENDED'
+        ) {
           return;
         }
 
         if (data.type === 'message') {
-          // Authoritative message relay
+          const content = String(data.content || '');
+
+          // 1. Message size validation
+          if (content.length > SAFE_ROOM_CONFIG.messageMaxLength) {
+            server.send(
+              JSON.stringify({
+                type: 'message_blocked',
+                eventId: 'size_' + Math.random().toString(36).substring(2, 8),
+                roomCode: this.room.roomCode,
+                participantId: session.participantId,
+                reason: 'MESSAGE_TOO_LONG',
+                message: 'Message is too long. Please shorten your message.',
+              })
+            );
+            return;
+          }
+
+          // 2. Rate limiting check (max 5 messages per second window)
+          const now = Date.now();
+          const pTimestamps = this.messageTimestamps.get(session.participantId) || [];
+          const recentTimestamps = pTimestamps.filter((t) => now - t < SAFE_ROOM_CONFIG.rateLimitWindowMs);
+          if (recentTimestamps.length >= SAFE_ROOM_CONFIG.maxMessagesPerWindow) {
+            server.send(
+              JSON.stringify({
+                type: 'message_blocked',
+                eventId: 'rate_' + Math.random().toString(36).substring(2, 8),
+                roomCode: this.room.roomCode,
+                participantId: session.participantId,
+                reason: 'RATE_LIMIT_EXCEEDED',
+                message: "You're sending messages too quickly. Please slow down.",
+              })
+            );
+            return;
+          }
+          recentTimestamps.push(now);
+          this.messageTimestamps.set(session.participantId, recentTimestamps);
+
+          // 3. SafeRoom Server-Authoritative Moderation Analysis
+          const modResult = defaultModerator.moderate(content);
+          if (!modResult.allowed) {
+            // Increment participant-specific warning counter
+            const currentWarnings = (this.warningsByParticipant.get(session.participantId) || 0) + 1;
+            this.warningsByParticipant.set(session.participantId, currentWarnings);
+
+            // Log minimal, privacy-preserving metadata in dev
+            console.log('[MODERATION]', {
+              roomCode: this.room.roomCode,
+              participantId: session.participantId,
+              action: currentWarnings >= SAFE_ROOM_CONFIG.terminateOnViolationNumber ? 'TERMINATE' : 'WARN',
+              warningNumber: currentWarnings,
+              category: modResult.category,
+            });
+
+            // If threshold reached (3rd violation) -> Terminate entire room
+            if (currentWarnings >= SAFE_ROOM_CONFIG.terminateOnViolationNumber) {
+              this.room.status = 'MODERATION_TERMINATED';
+              this.room.messages = [];
+              await this.saveRoom();
+
+              this.broadcast({
+                type: 'room_terminated',
+                roomCode: this.room.roomCode,
+                reason: 'MODERATION_VIOLATION',
+                message: "This temporary room was closed because of repeated violations of the conversation guidelines.",
+              });
+
+              this.closeAllSockets(1008, 'Room closed due to repeated policy violations');
+              await this.state.storage.deleteAll();
+              return;
+            }
+
+            // Otherwise, send private warning directly to violating sender ONLY
+            const isFinal = currentWarnings === SAFE_ROOM_CONFIG.maxWarnings;
+            server.send(
+              JSON.stringify({
+                type: 'moderation_warning',
+                eventId: 'mod_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36),
+                roomCode: this.room.roomCode,
+                participantId: session.participantId,
+                warningNumber: currentWarnings,
+                warningsRemaining: Math.max(0, SAFE_ROOM_CONFIG.maxWarnings - currentWarnings),
+                maxWarnings: SAFE_ROOM_CONFIG.maxWarnings,
+                finalWarning: isFinal,
+                reason: 'POLICY_VIOLATION',
+                message: isFinal
+                  ? 'This is your final warning. Another violation will close this room.'
+                  : 'Please keep the conversation respectful. Continued violations may close this room.',
+              })
+            );
+            return; // Prohibited message is NEVER broadcast or stored
+          }
+
+          // 4. Allowed message -> Store and broadcast to all members
           const msgId = data.id || 'msg_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
           const msg: Message = {
             id: msgId,
             roomCode: this.room.roomCode,
             senderId: session.participantId,
             senderName: data.senderName || session.displayName || 'Anonymous',
-            content: data.content || '',
+            content,
             timestamp: Date.now(),
-            type: data.messageType || data.type === 'file' ? 'file' : 'text',
+            type: data.messageType || (data.type === 'file' ? 'file' : 'text'),
             file: data.file,
           };
 
@@ -614,7 +825,6 @@ export class RoomDurableObject {
           }
           await this.saveRoom();
 
-          // Broadcast to all sockets
           this.broadcast({
             type: 'message',
             roomCode: this.room.roomCode,
@@ -648,15 +858,13 @@ export class RoomDurableObject {
       const session = this.sessions.get(server);
       this.sessions.delete(server);
 
-      if (session && this.room) {
-        // Mark participant offline
+      if (session && this.room && this.room.status !== 'MODERATION_TERMINATED') {
         const p = this.room.participants.find((x) => x.participantId === session.participantId);
         if (p) {
           p.isOnline = false;
         }
         this.saveRoom();
 
-        // Broadcast participant left / offline
         this.broadcast({
           type: 'participant_left',
           roomCode: this.room.roomCode,

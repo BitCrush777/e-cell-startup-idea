@@ -14,6 +14,9 @@ import { Room, Message, Participant } from '@/types';
 import { RealtimeClient } from '@/lib/realtime';
 import { getRoom, joinRoom, endRoom, sendMessage } from '@/lib/api';
 import { generateTemporaryIdentity, generateParticipantId } from '@/lib/identity';
+import { SafeRoomIndicator } from '@/components/SafeRoomIndicator';
+import { SafeRoomWarningModal, ModerationWarningData } from '@/components/SafeRoomWarningModal';
+import { RoomTerminatedState } from '@/components/RoomTerminatedState';
 
 export default function RoomChatPage() {
   const params = useParams();
@@ -34,12 +37,17 @@ export default function RoomChatPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [hasUnreadBelow, setHasUnreadBelow] = useState<boolean>(false);
+  // SafeRoom moderation state
+  const [activeWarning, setActiveWarning] = useState<ModerationWarningData | null>(null);
+  const [isTerminated, setIsTerminated] = useState<boolean>(false);
+  const [terminationReason, setTerminationReason] = useState<string>('');
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const realtimeClientRef = useRef<RealtimeClient | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isNearBottomRef = useRef<boolean>(true);
+  const processedWarningEventsRef = useRef<Set<string>>(new Set());
 
   // Check if scroll is near bottom (within 100px)
   const handleScroll = () => {
@@ -99,13 +107,44 @@ export default function RoomChatPage() {
 
     setCurrentParticipant(storedParticipant);
 
-    // Synchronize Room State
     async function syncRoomState() {
       try {
         const roomData = await getRoom(roomCode);
         if (!mounted) return;
+        if (roomData.status === 'MODERATION_TERMINATED') {
+          setIsTerminated(true);
+          setTerminationReason("This temporary room was closed because the conversation repeatedly violated TempLink's conversation guidelines.");
+          setIsLoading(false);
+          return;
+        }
+        setRoom(roomData);
+        setMessages(roomData.messages || []);
+      } catch (err: any) {
+        if (!mounted) return;
+        if (err.message === 'ROOM_TERMINATED' || err.code === 'ROOM_TERMINATED') {
+          setIsTerminated(true);
+          setTerminationReason("This temporary room was closed because the conversation repeatedly violated TempLink's conversation guidelines.");
+        }
+      }
+    }
 
-        if (roomData.status === 'EXPIRED' || roomData.status === 'ENDED' || roomData.expiresAt <= Date.now()) {
+    async function initSession() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Fetch authoritative initial room state
+        const roomData = await getRoom(roomCode);
+        if (!mounted) return;
+
+        if (roomData.status === 'MODERATION_TERMINATED') {
+          setIsTerminated(true);
+          setTerminationReason("This temporary room was closed because the conversation repeatedly violated TempLink's conversation guidelines.");
+          setIsLoading(false);
+          return;
+        }
+
+        if (roomData.status === 'EXPIRED' || Date.now() >= roomData.expiresAt) {
           router.push(`/room/${roomCode}/expired`);
           return;
         }
@@ -113,95 +152,108 @@ export default function RoomChatPage() {
         setRoom(roomData);
         setMessages(roomData.messages || []);
         setIsLoading(false);
-      } catch (err: any) {
-        if (!mounted) return;
-        setError(err.message || 'Failed to load room');
-        setIsLoading(false);
-      }
-    }
 
-    async function initSession() {
-      await syncRoomState();
+        // Connect Realtime WebSocket channel with participant credentials
+        if (storedParticipant) {
+          const client = new RealtimeClient(roomCode, storedParticipant);
+          realtimeClientRef.current = client;
 
-      if (storedParticipant) {
-        try {
-          await joinRoom(roomCode, storedParticipant.participantId, storedParticipant.displayName);
-        } catch {}
+          client.subscribe((event: any) => {
+            if (!mounted) return;
 
-        // Initialize Realtime WebSocket Connection
-        const client = new RealtimeClient(roomCode, storedParticipant);
-        realtimeClientRef.current = client;
-
-        client.subscribe((event) => {
-          if (event.type === 'room_state') {
-            if (event.state) {
-              setRoom((prev) => {
-                if (!prev) return event.state as Room;
-                return { ...prev, ...event.state };
+            if (event.type === 'room_state') {
+              if (event.state?.status === 'MODERATION_TERMINATED') {
+                setIsTerminated(true);
+                setTerminationReason("This temporary room was closed because the conversation repeatedly violated TempLink's conversation guidelines.");
+                client.disconnect();
+                return;
+              }
+              if (event.state) {
+                setRoom((prev) => (prev ? { ...prev, ...event.state } : event.state));
+                if (event.state.messages) {
+                  setMessages(event.state.messages);
+                }
+              }
+            } else if (event.type === 'message') {
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === event.message.id)) {
+                  return prev;
+                }
+                return [...prev, event.message];
               });
-              if (event.state.messages && event.state.messages.length > 0) {
-                setMessages((prev) => {
-                  const map = new Map<string, Message>();
-                  prev.forEach((m) => map.set(m.id, m));
-                  event.state.messages?.forEach((m) => map.set(m.id, m));
-                  return Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
+            } else if (event.type === 'typing') {
+              if (event.participantId !== storedParticipant?.participantId) {
+                setTypingUsers((prev) => {
+                  const copy = { ...prev };
+                  if (event.typing) {
+                    copy[event.participantId] = event.displayName || 'Guest';
+                  } else {
+                    delete copy[event.participantId];
+                  }
+                  return copy;
                 });
               }
-            }
-          } else if (event.type === 'message') {
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === event.message.id)) {
-                return prev;
-              }
-              return [...prev, event.message];
-            });
-          } else if (event.type === 'typing') {
-            if (event.participantId !== storedParticipant?.participantId) {
+            } else if (event.type === 'participant_joined') {
+              setRoom((prev) => {
+                if (!prev) return prev;
+                const exists = prev.participants.some((p) => p.participantId === event.participant.participantId);
+                if (exists) return prev;
+                return { ...prev, participants: [...prev.participants, event.participant] };
+              });
+            } else if (event.type === 'participant_left') {
+              setRoom((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  participants: prev.participants.map((p) =>
+                    p.participantId === event.participantId ? { ...p, isOnline: false } : p
+                  ),
+                };
+              });
               setTypingUsers((prev) => {
                 const copy = { ...prev };
-                if (event.typing) {
-                  copy[event.participantId] = event.displayName || 'Guest';
-                } else {
-                  delete copy[event.participantId];
-                }
+                delete copy[event.participantId];
                 return copy;
               });
+            } else if (event.type === 'moderation_warning') {
+              // Deduplicate warning events
+              if (!processedWarningEventsRef.current.has(event.eventId)) {
+                processedWarningEventsRef.current.add(event.eventId);
+                setActiveWarning({
+                  eventId: event.eventId,
+                  warningNumber: event.warningNumber,
+                  warningsRemaining: event.warningsRemaining,
+                  maxWarnings: event.maxWarnings,
+                  finalWarning: event.finalWarning,
+                  message: event.message,
+                });
+                toast('Message blocked • Please keep the conversation respectful.', 'warning');
+              }
+            } else if (event.type === 'message_blocked') {
+              toast(event.message || 'Message blocked by SafeRoom', 'warning');
+            } else if (event.type === 'room_terminated') {
+              setIsTerminated(true);
+              setTerminationReason(event.message || "This temporary room was closed because the conversation repeatedly violated TempLink's conversation guidelines.");
+              client.disconnect();
+            } else if (event.type === 'connection_status') {
+              setConnectionStatus(event.status);
+            } else if (event.type === 'room_expiring') {
+              toast(`Room expires in ${event.remainingSeconds} seconds!`, 'warning');
+            } else if (event.type === 'room_expired') {
+              router.push(`/room/${roomCode}/expired`);
+            } else if (event.type === 'room_ended') {
+              toast('The host has ended this private room.', 'warning');
+              router.push(`/room/${roomCode}/expired`);
             }
-          } else if (event.type === 'participant_joined') {
-            setRoom((prev) => {
-              if (!prev) return prev;
-              const exists = prev.participants.some((p) => p.participantId === event.participant.participantId);
-              if (exists) return prev;
-              return { ...prev, participants: [...prev.participants, event.participant] };
-            });
-          } else if (event.type === 'participant_left') {
-            setRoom((prev) => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                participants: prev.participants.map((p) =>
-                  p.participantId === event.participantId ? { ...p, isOnline: false } : p
-                ),
-              };
-            });
-            setTypingUsers((prev) => {
-              const copy = { ...prev };
-              delete copy[event.participantId];
-              return copy;
-            });
-          } else if (event.type === 'connection_status') {
-            setConnectionStatus(event.status);
-          } else if (event.type === 'room_expiring') {
-            toast(`Room expires in ${event.remainingSeconds} seconds!`, 'warning');
-          } else if (event.type === 'room_expired') {
-            router.push(`/room/${roomCode}/expired`);
-          } else if (event.type === 'room_ended') {
-            toast('The host has ended this private room.', 'warning');
-            router.push(`/room/${roomCode}/expired`);
-          }
-        });
+          });
 
-        client.connect();
+          client.connect();
+        }
+      } catch (err: any) {
+        if (mounted) {
+          setError(err.message || 'Failed to initialize session');
+          setIsLoading(false);
+        }
       }
     }
 
@@ -331,6 +383,10 @@ export default function RoomChatPage() {
       ? `${typingNames.join(', ')}`
       : null;
 
+  if (isTerminated) {
+    return <RoomTerminatedState roomCode={roomCode} reason={terminationReason} />;
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-screen h-[100dvh] w-screen items-center justify-center bg-[#05070B]">
@@ -390,6 +446,9 @@ export default function RoomChatPage() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* SafeRoom Active Protection Indicator */}
+            <SafeRoomIndicator />
+
             {/* Authoritative Server Countdown */}
             <div className="flex items-center gap-2 bg-[#0D111A] px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-white/10 shadow-sm">
               <CountdownTimer expiresAt={room.expiresAt} onExpire={handleExpire} />
@@ -533,6 +592,12 @@ export default function RoomChatPage() {
         isOpen={isFileModalOpen}
         onClose={() => setIsFileModalOpen(false)}
         onSendFile={handleSendFile}
+      />
+
+      {/* SafeRoom Moderation Warning Modal */}
+      <SafeRoomWarningModal
+        warning={activeWarning}
+        onDismiss={() => setActiveWarning(null)}
       />
     </div>
   );

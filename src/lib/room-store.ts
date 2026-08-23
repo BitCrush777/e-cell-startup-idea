@@ -1,17 +1,25 @@
-import { Room, Message, Participant, RoomPlan } from '@/types';
+import { Room, Message, Participant, RoomPlan, RoomStatus } from '@/types';
 import { generateId, generateRoomCode, generateParticipantId, generateInternalRoomId } from './identity';
 import { getMaxRoomMembers, PlanType } from './plans';
+import { defaultModerator } from './moderation/word-filter';
+import { SAFE_ROOM_CONFIG } from './moderation/config';
 
 // Global in-memory storage attached to globalThis to persist across Next.js dev reloads
 declare global {
   var __templink_rooms__: Map<string, Room> | undefined;
+  var __templink_room_warnings__: Map<string, Map<string, number>> | undefined;
 }
 
 if (!globalThis.__templink_rooms__) {
   globalThis.__templink_rooms__ = new Map<string, Room>();
 }
 
+if (!globalThis.__templink_room_warnings__) {
+  globalThis.__templink_room_warnings__ = new Map<string, Map<string, number>>();
+}
+
 const globalRooms = globalThis.__templink_rooms__;
+const globalRoomWarnings = globalThis.__templink_room_warnings__;
 
 export interface CreateRoomOptions {
   durationMinutes: number;
@@ -28,9 +36,6 @@ export interface CreateRoomOptions {
   baseUrl?: string;
 }
 
-/**
- * Generates a collision-free room code not currently used by any active room
- */
 export function generateUniqueRoomCode(): string {
   let attempts = 0;
   while (attempts < 50) {
@@ -40,8 +45,12 @@ export function generateUniqueRoomCode(): string {
     if (!existing) {
       return code;
     }
-    // If existing room is expired, it's safe to recreate/replace
-    if (existing.status === 'EXPIRED' || existing.status === 'ENDED' || Date.now() >= existing.expiresAt) {
+    if (
+      existing.status === 'EXPIRED' ||
+      existing.status === 'ENDED' ||
+      existing.status === 'MODERATION_TERMINATED' ||
+      Date.now() >= existing.expiresAt
+    ) {
       return code;
     }
   }
@@ -94,7 +103,7 @@ export function createRoom(options: CreateRoomOptions): Room {
         roomCode,
         senderId: 'system',
         senderName: 'TempLink System',
-        content: `Private room created (${plan} plan: up to ${maxMembers} members). Auto-destruct active in ${options.durationMinutes} minutes.`,
+        content: `Private room created (${plan} plan: up to ${maxMembers} members). SafeRoom active. Auto-destruct active in ${options.durationMinutes} minutes.`,
         timestamp: now,
         type: 'system',
       },
@@ -102,6 +111,7 @@ export function createRoom(options: CreateRoomOptions): Room {
   };
 
   globalRooms.set(roomCode, room);
+  globalRoomWarnings.set(roomCode, new Map<string, number>());
 
   if (process.env.NODE_ENV !== 'production') {
     console.log(`[ROOM CREATED] roomCode=${roomCode}, joinUrl=${joinUrl}, maxMembers=${maxMembers}, expiresAt=${new Date(room.expiresAt).toLocaleTimeString()}`);
@@ -119,7 +129,12 @@ export function getRoom(roomCode: string): Room | null {
   }
 
   // Check TTL
-  if (Date.now() >= room.expiresAt) {
+  if (
+    Date.now() >= room.expiresAt &&
+    room.status !== 'EXPIRED' &&
+    room.status !== 'ENDED' &&
+    room.status !== 'MODERATION_TERMINATED'
+  ) {
     room.status = 'EXPIRED';
     room.messages = [];
   }
@@ -147,7 +162,12 @@ export function getAllActiveRooms(): Room[] {
   const now = Date.now();
   const active: Room[] = [];
   for (const [, room] of globalRooms.entries()) {
-    if (room.status !== 'EXPIRED' && room.status !== 'ENDED' && room.expiresAt > now) {
+    if (
+      room.status !== 'EXPIRED' &&
+      room.status !== 'ENDED' &&
+      room.status !== 'MODERATION_TERMINATED' &&
+      room.expiresAt > now
+    ) {
       active.push(room);
     }
   }
@@ -172,12 +192,13 @@ export function deleteRoom(roomCode: string): boolean {
     room.messages = [];
     room.participants = [];
   }
+  globalRoomWarnings.delete(code);
   return globalRooms.delete(code);
 }
 
 export function validateRoom(roomCode: string): {
   valid: boolean;
-  status?: 'valid' | 'expired' | 'full' | 'ended' | 'invalid';
+  status?: 'valid' | 'expired' | 'full' | 'ended' | 'invalid' | 'terminated';
   error?: string;
   code?: string;
   room?: Partial<Room>;
@@ -190,6 +211,15 @@ export function validateRoom(roomCode: string): {
 
   if (!room) {
     return { valid: false, status: 'invalid', error: 'Room does not exist or has expired.' };
+  }
+
+  if (room.status === 'MODERATION_TERMINATED') {
+    return {
+      valid: false,
+      status: 'terminated',
+      code: 'ROOM_TERMINATED',
+      error: "This room was closed because of repeated violations of the conversation guidelines.",
+    };
   }
 
   if (room.status === 'EXPIRED' || room.status === 'ENDED' || Date.now() >= room.expiresAt) {
@@ -245,6 +275,14 @@ export function joinRoom(
 
   if (!room) {
     return { success: false, error: 'Room not found.' };
+  }
+
+  if (room.status === 'MODERATION_TERMINATED') {
+    return {
+      success: false,
+      code: 'ROOM_TERMINATED',
+      error: "This room was closed because of repeated violations of the conversation guidelines.",
+    };
   }
 
   if (room.status === 'ENDED' || room.status === 'EXPIRED' || Date.now() >= room.expiresAt) {
@@ -303,10 +341,73 @@ export function addMessage(
   content: string,
   file?: any,
   type: 'text' | 'file' | 'system' = 'text'
-): { success: boolean; message?: Message; error?: string } {
+): {
+  success: boolean;
+  message?: Message;
+  error?: string;
+  code?: string;
+  warningNumber?: number;
+  warningsRemaining?: number;
+  finalWarning?: boolean;
+} {
   const room = getRoom(roomCode);
   if (!room || room.status === 'EXPIRED' || room.status === 'ENDED') {
     return { success: false, error: 'Room not found or has expired' };
+  }
+
+  if (room.status === 'MODERATION_TERMINATED') {
+    return {
+      success: false,
+      code: 'ROOM_TERMINATED',
+      error: "This room was closed because of repeated violations of the conversation guidelines.",
+    };
+  }
+
+  // 1. Message size check
+  if (content && content.length > SAFE_ROOM_CONFIG.messageMaxLength) {
+    return {
+      success: false,
+      code: 'MESSAGE_TOO_LONG',
+      error: 'Message is too long. Please shorten your message.',
+    };
+  }
+
+  // 2. SafeRoom Server-Side Moderation Check
+  const modResult = defaultModerator.moderate(content);
+  if (!modResult.allowed) {
+    const code = room.roomCode;
+    let roomWarnings = globalRoomWarnings.get(code);
+    if (!roomWarnings) {
+      roomWarnings = new Map<string, number>();
+      globalRoomWarnings.set(code, roomWarnings);
+    }
+
+    const currentWarnings = (roomWarnings.get(senderId) || 0) + 1;
+    roomWarnings.set(senderId, currentWarnings);
+
+    if (currentWarnings >= SAFE_ROOM_CONFIG.terminateOnViolationNumber) {
+      room.status = 'MODERATION_TERMINATED';
+      room.messages = [];
+      return {
+        success: false,
+        code: 'ROOM_TERMINATED',
+        warningNumber: currentWarnings,
+        finalWarning: true,
+        error: "This room was closed because of repeated violations of the conversation guidelines.",
+      };
+    }
+
+    const isFinal = currentWarnings === SAFE_ROOM_CONFIG.maxWarnings;
+    return {
+      success: false,
+      code: 'MODERATION_VIOLATION',
+      warningNumber: currentWarnings,
+      warningsRemaining: Math.max(0, SAFE_ROOM_CONFIG.maxWarnings - currentWarnings),
+      finalWarning: isFinal,
+      error: isFinal
+        ? 'This is your final warning. Another violation will close this room.'
+        : 'Please keep the conversation respectful. Continued violations may close this room.',
+    };
   }
 
   const message: Message = {

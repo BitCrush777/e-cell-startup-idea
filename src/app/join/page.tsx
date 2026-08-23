@@ -85,6 +85,9 @@ function JoinRoomContent() {
       if (result.status === 'expired') {
         setValidationState('expired');
         setErrorMessage('This room has expired and was erased.');
+      } else if (result.status === 'terminated' || result.code === 'ROOM_TERMINATED') {
+        setValidationState('invalid');
+        setErrorMessage("This room was closed because of repeated violations of the conversation guidelines.");
       } else if (result.status === 'full' || result.code === 'ROOM_FULL') {
         setValidationState('full');
         const plan = result.plan || 'FREE';

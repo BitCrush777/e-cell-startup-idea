@@ -4,11 +4,13 @@ export type RoomStatus =
   | 'EXPIRING'
   | 'EXPIRED'
   | 'ENDED'
+  | 'MODERATION_TERMINATED'
   | 'waiting'
   | 'active'
   | 'expiring'
   | 'expired'
-  | 'ended';
+  | 'ended'
+  | 'moderation_terminated';
 
 export interface Participant {
   participantId: string;
@@ -66,8 +68,8 @@ export interface Room {
 }
 
 export type RoomEvent =
-  | { type: 'participant_joined'; roomCode: string; participant: Participant }
-  | { type: 'participant_left'; roomCode: string; participantId: string; participantName?: string }
+  | { type: 'participant_joined'; roomCode: string; participant: Participant; currentMembers?: number; maxMembers?: number }
+  | { type: 'participant_left'; roomCode: string; participantId: string; participantName?: string; currentMembers?: number; maxMembers?: number }
   | { type: 'message'; roomCode: string; message: Message }
   | { type: 'typing'; roomCode: string; participantId: string; displayName?: string; typing: boolean }
   | { type: 'typing_start'; roomCode: string; participantId: string; participantName?: string }
@@ -76,6 +78,32 @@ export type RoomEvent =
   | { type: 'room_expiring'; roomCode: string; remainingSeconds: number }
   | { type: 'room_expired'; roomCode: string; reason: string }
   | { type: 'room_ended'; roomCode: string; reason: string }
+  | {
+      type: 'moderation_warning';
+      eventId: string;
+      roomCode: string;
+      participantId: string;
+      warningNumber: number;
+      warningsRemaining: number;
+      maxWarnings: number;
+      finalWarning: boolean;
+      reason: string;
+      message: string;
+    }
+  | {
+      type: 'room_terminated';
+      roomCode: string;
+      reason: 'MODERATION_VIOLATION' | 'ADMIN_ACTION' | 'POLICY_VIOLATION';
+      message: string;
+    }
+  | {
+      type: 'message_blocked';
+      eventId: string;
+      roomCode: string;
+      participantId: string;
+      reason: string;
+      message: string;
+    }
   | { type: 'connection_status'; status: 'connected' | 'reconnecting' | 'disconnected' }
   | { type: 'ping' }
   | { type: 'pong'; timestamp: number };
