@@ -8,6 +8,7 @@ import { joinRoom, validateRoom, RoomValidationResult } from '@/lib/api';
 import { generateTemporaryIdentity, generateParticipantId } from '@/lib/identity';
 import CountdownTimer from '@/components/CountdownTimer';
 import { Room } from '@/types';
+import { normalizeRoomCode } from '@/lib/urls';
 import { BlurFade } from '@/components/magicui/BlurFade';
 import { ShimmerButton } from '@/components/magicui/ShimmerButton';
 
@@ -17,7 +18,9 @@ function JoinRoomContent() {
   const { toast } = useToast();
 
   const codeParam = searchParams.get('code') || '';
-  const [code, setCode] = useState<string>(codeParam.toUpperCase());
+  const isScanned = searchParams.get('scanned') === '1';
+  const [code, setCode] = useState<string>(() => normalizeRoomCode(codeParam));
+  const [scannedBadge, setScannedBadge] = useState<boolean>(isScanned);
   const [participantName, setParticipantName] = useState<string>(() => generateTemporaryIdentity());
   const [password, setPassword] = useState<string>('');
 
@@ -36,29 +39,14 @@ function JoinRoomContent() {
   }, []);
 
   const formatCodeInput = (raw: string): string => {
-    let clean = raw.trim();
-    // If URL pasted e.g. https://.../join/K7XM-4P2Q or ?code=K7XM-4P2Q
-    const urlMatch = clean.match(/\/join\/([A-Za-z0-9-]+)/i) || clean.match(/[?&]code=([A-Za-z0-9-]+)/i);
-    if (urlMatch && urlMatch[1]) {
-      clean = urlMatch[1];
-    }
-    // Remove invalid characters
-    clean = clean.toUpperCase().replace(/[^A-Z0-9-]/g, '');
-
-    // Auto-insert dash after 4 characters
-    if (clean.length === 4 && !clean.includes('-')) {
-      clean = clean + '-';
-    } else if (clean.length > 4 && !clean.includes('-')) {
-      clean = clean.substring(0, 4) + '-' + clean.substring(4, 8);
-    }
-
-    return clean.substring(0, 9);
+    return normalizeRoomCode(raw);
   };
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCodeInput(e.target.value);
     setCode(formatted);
     setErrorMessage(null);
+    setScannedBadge(false);
 
     if (validationTimerRef.current) {
       clearTimeout(validationTimerRef.current);
@@ -102,16 +90,20 @@ function JoinRoomContent() {
     }
   };
 
-  // Initial code param validation
+  // Initial code param handling (from QR scan or deep link)
   useEffect(() => {
     if (codeParam) {
-      const formatted = formatCodeInput(codeParam);
+      const formatted = normalizeRoomCode(codeParam);
       setCode(formatted);
+      if (isScanned) {
+        toast('QR code scanned successfully!', 'success');
+        setScannedBadge(true);
+      }
       if (formatted.length >= 4) {
         performValidation(formatted);
       }
     }
-  }, [codeParam]);
+  }, [codeParam, isScanned, toast]);
 
   const handlePasteClipboard = async () => {
     try {
@@ -211,9 +203,17 @@ function JoinRoomContent() {
           {/* Room Code Input */}
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Room Code
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Room Code
+                </label>
+                {scannedBadge && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full animate-fade-in">
+                    <span className="material-symbols-outlined text-[12px]">check</span>
+                    QR Code Scanned
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <button
                   type="button"

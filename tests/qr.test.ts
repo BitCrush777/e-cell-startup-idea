@@ -1,9 +1,33 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { parseQrContent, getJoinUrl, getAppBaseUrl } from '../src/lib/urls';
-import { generateRoomCode, generateInternalRoomId, createRoom } from '../src/lib/room-store';
+import { parseQrContent, getJoinUrl, extractRoomCode, normalizeRoomCode } from '../src/lib/urls';
+import { createRoom } from '../src/lib/room-store';
 
-describe('TempLink QR Code Generation, URL Parsing & Security Tests', () => {
+describe('TempLink QR Code Generation, URL Parsing & Normalization Tests', () => {
+  test('normalizeRoomCode normalizes various user and scanner inputs', () => {
+    assert.strictEqual(normalizeRoomCode('k7xm4p2q'), 'K7XM-4P2Q');
+    assert.strictEqual(normalizeRoomCode('K7XM-4P2Q'), 'K7XM-4P2Q');
+    assert.strictEqual(normalizeRoomCode('k7xm-4p2q'), 'K7XM-4P2Q');
+    assert.strictEqual(normalizeRoomCode(' K7XM 4P2Q '), 'K7XM-4P2Q');
+    assert.strictEqual(normalizeRoomCode('r8tz6w3a'), 'R8TZ-6W3A');
+  });
+
+  test('extractRoomCode correctly extracts room code from full production URLs', () => {
+    const code = extractRoomCode('https://templink.in/join/K7XM-4P2Q');
+    assert.strictEqual(code, 'K7XM-4P2Q');
+  });
+
+  test('extractRoomCode correctly extracts room code from raw text payload', () => {
+    const code = extractRoomCode('K7XM-4P2Q');
+    assert.strictEqual(code, 'K7XM-4P2Q');
+  });
+
+  test('extractRoomCode returns null for malicious or external URLs', () => {
+    assert.strictEqual(extractRoomCode('https://malicious-site.com/join/K7XM-4P2Q'), null);
+    assert.strictEqual(extractRoomCode('https://google.com'), null);
+    assert.strictEqual(extractRoomCode('???'), null);
+  });
+
   test('getJoinUrl formats production URLs cleanly', () => {
     const code = 'K7XM-4P2Q';
     const joinUrl = getJoinUrl(code);
@@ -25,28 +49,11 @@ describe('TempLink QR Code Generation, URL Parsing & Security Tests', () => {
     assert.strictEqual(res.roomCode, 'R8TZ-6W3A');
   });
 
-  test('parseQrContent parses raw formatted room codes', () => {
-    const res = parseQrContent('M5QK-9X7P');
-    assert.strictEqual(res.valid, true);
-    assert.strictEqual(res.roomCode, 'M5QK-9X7P');
-  });
-
-  test('parseQrContent parses unhyphenated 8-char codes into formatted XXXX-XXXX', () => {
-    const res = parseQrContent('K7XM4P2Q');
-    assert.strictEqual(res.valid, true);
-    assert.strictEqual(res.roomCode, 'K7XM-4P2Q');
-  });
-
   test('Security: parseQrContent rejects external malicious URLs', () => {
     const malicious = 'https://evil-phishing-site.com/steal-creds';
     const res = parseQrContent(malicious);
     assert.strictEqual(res.valid, false);
     assert.ok(res.error?.includes('external') || res.error?.includes('not a valid TempLink'));
-  });
-
-  test('Security: parseQrContent rejects invalid gibberish', () => {
-    const res = parseQrContent('???');
-    assert.strictEqual(res.valid, false);
   });
 
   test('100 Room Test: 100 sequentially created rooms have unique codes and unique join URLs', () => {
@@ -66,10 +73,9 @@ describe('TempLink QR Code Generation, URL Parsing & Security Tests', () => {
       codes.add(room.roomCode);
       joinUrls.add(room.joinUrl);
 
-      // Verify QR parsing on each generated join URL
-      const parsed = parseQrContent(room.joinUrl);
-      assert.strictEqual(parsed.valid, true);
-      assert.strictEqual(parsed.roomCode, room.roomCode);
+      // Verify QR extraction on each generated join URL
+      const extracted = extractRoomCode(room.joinUrl);
+      assert.strictEqual(extracted, room.roomCode);
     }
 
     assert.strictEqual(codes.size, 100);
