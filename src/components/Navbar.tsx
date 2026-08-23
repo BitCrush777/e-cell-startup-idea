@@ -39,11 +39,12 @@ export default function Navbar() {
   }
 
   const navLinks = [
+    { href: '/#product', label: 'Product' },
     { href: '/#how-it-works', label: 'How It Works' },
     { href: '/security', label: 'Security' },
-    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/#use-cases', label: 'Use Cases' },
     { href: '/pricing', label: 'Pricing' },
-    { href: '/business', label: 'Enterprise' },
+    { href: '/about', label: 'About' },
   ];
 
   const handleSignOut = async () => {

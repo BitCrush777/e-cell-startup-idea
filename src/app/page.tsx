@@ -25,7 +25,7 @@ export default function HomePage() {
       <Meteors number={12} />
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-16 md:pt-40 md:pb-24 px-4 md:px-8 max-w-7xl mx-auto flex flex-col items-center text-center">
+      <section id="product" className="relative pt-32 pb-16 md:pt-40 md:pb-24 px-4 md:px-8 max-w-7xl mx-auto flex flex-col items-center text-center">
         {/* Subtle Badge */}
         <BlurFade delay={0.1}>
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0D111A] border border-white/10 text-xs font-semibold mb-6 shadow-sm">
@@ -311,6 +311,56 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Use Cases Section */}
+      <section id="use-cases" className="py-16 px-4 md:px-8 max-w-7xl mx-auto">
+        <div className="text-center mb-12">
+          <span className="text-xs font-semibold text-primary-light uppercase tracking-widest block mb-2">
+            Engineered for Ephemeral Workflows
+          </span>
+          <h2 className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">
+            Built For Pure Confidentiality
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <BlurFade delay={0.1}>
+            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80">
+              <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
+                <span className="material-symbols-outlined text-[20px]">verified_user</span>
+              </div>
+              <h3 className="text-base font-bold text-white mb-1.5">Journalism & Whistleblowing</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Connect with sensitive sources without exchanging phone numbers, email addresses, or persistent metadata.
+              </p>
+            </div>
+          </BlurFade>
+
+          <BlurFade delay={0.2}>
+            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80">
+              <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
+                <span className="material-symbols-outlined text-[20px]">vpn_key</span>
+              </div>
+              <h3 className="text-base font-bold text-white mb-1.5">Credential & Key Sharing</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Send one-time API keys, recovery phrases, or environment variables that erase from memory the moment the timer ends.
+              </p>
+            </div>
+          </BlurFade>
+
+          <BlurFade delay={0.3}>
+            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80">
+              <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
+                <span className="material-symbols-outlined text-[20px]">business_center</span>
+              </div>
+              <h3 className="text-base font-bold text-white mb-1.5">Legal & Advisory Consultations</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Review contracts, NDA drafts, and sensitive advisory documents in real time without leaving a permanent trail.
+              </p>
+            </div>
+          </BlurFade>
+        </div>
+      </section>
+
       {/* Bottom Conversion CTA */}
       <section className="py-20 px-4 md:px-8 max-w-5xl mx-auto w-full text-center">
         <BlurFade delay={0.2}>
@@ -338,27 +388,6 @@ export default function HomePage() {
           </div>
         </BlurFade>
       </section>
-
-      {/* Minimal Footer */}
-      <footer className="border-t border-white/10 py-8 px-4 md:px-8 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-300">TempLink</span>
-            <span>• Connect. Communicate. Disappear.</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <Link href="/security" className="hover:text-slate-300 transition-colors">
-              Security Protocol
-            </Link>
-            <Link href="/pricing" className="hover:text-slate-300 transition-colors">
-              Pricing
-            </Link>
-            <Link href="/business" className="hover:text-slate-300 transition-colors">
-              Enterprise
-            </Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

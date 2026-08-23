@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { ToastProvider } from '@/components/ToastProvider';
 import { PwaProvider } from '@/components/PwaProvider';
@@ -86,6 +87,7 @@ export default function RootLayout({
             <PwaProvider>
               <Navbar />
               {children}
+              <Footer />
               <MobileBottomNav />
             </PwaProvider>
           </AuthProvider>
