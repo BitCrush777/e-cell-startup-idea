@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { PostRoomFeedback } from '@/components/PostRoomFeedback';
 
 export default function ExpiredRoomPage() {
   const params = useParams();
@@ -10,11 +11,13 @@ export default function ExpiredRoomPage() {
   const roomCode = ((params.roomCode as string) || '').toUpperCase();
 
   const [phase, setPhase] = useState<'dissolving' | 'destroyed'>('dissolving');
+  const [showFeedback, setShowFeedback] = useState<boolean>(true);
 
   useEffect(() => {
     // Clear local storage for this room's participant
     if (typeof window !== 'undefined' && roomCode) {
       localStorage.removeItem(`templink_participant_${roomCode}`);
+      sessionStorage.removeItem(`templink_session_${roomCode}`);
     }
 
     const timer = setTimeout(() => {
@@ -44,6 +47,28 @@ export default function ExpiredRoomPage() {
               Zeroizing cryptographic vectors for room {roomCode}...
             </p>
           </div>
+        </div>
+      ) : showFeedback ? (
+        <div className="flex flex-col items-center gap-6 w-full max-w-lg">
+          {/* Subtle Session Ended Banner */}
+          <div className="w-full bg-[#080B12]/80 border border-white/10 rounded-2xl p-4 flex items-center justify-between text-xs backdrop-blur-md">
+            <span className="text-slate-300 flex items-center gap-2 font-medium">
+              <span className="material-symbols-outlined text-[16px] text-emerald-400">check_circle</span>
+              Room <span className="font-mono text-white">{roomCode}</span> ended • Memory zeroized
+            </span>
+            <button
+              onClick={() => router.push('/')}
+              className="text-[11px] text-primary-light hover:underline font-semibold"
+            >
+              Skip
+            </button>
+          </div>
+
+          {/* Core Post-Room Feedback Component */}
+          <PostRoomFeedback
+            roomCode={roomCode}
+            onClose={() => router.push('/')}
+          />
         </div>
       ) : (
         <div className="glass-panel p-8 sm:p-10 rounded-3xl max-w-md w-full flex flex-col items-center text-center gap-5 animate-fade-in border border-white/10 bg-[#080B12]/90 shadow-2xl">

@@ -428,6 +428,10 @@ export function addMessage(
   return { success: true, message };
 }
 
+export function getAllRooms(): Room[] {
+  return Array.from(globalRooms.values());
+}
+
 export function endRoom(roomCode: string, requestedBy?: string): { success: boolean; error?: string } {
   const code = roomCode.toUpperCase().trim();
   const room = globalRooms.get(code);

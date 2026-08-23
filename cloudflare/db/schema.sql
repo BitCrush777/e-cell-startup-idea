@@ -63,9 +63,25 @@ CREATE TABLE IF NOT EXISTS usage (
     created_at INTEGER NOT NULL
 );
 
+-- 6. Feedback & Product Validation Table (Anonymous metrics, zero chat content)
+CREATE TABLE IF NOT EXISTS feedback (
+    id TEXT PRIMARY KEY,
+    rating INTEGER NOT NULL, -- 1 to 5
+    would_use_again TEXT NOT NULL, -- 'DEFINITELY', 'PROBABLY', 'UNSURE', 'PROBABLY_NOT', 'NO'
+    improvement_text TEXT,
+    use_case TEXT,
+    plan TEXT NOT NULL DEFAULT 'FREE', -- 'FREE', 'PRO', 'BUSINESS'
+    member_count INTEGER NOT NULL DEFAULT 1,
+    app_version TEXT NOT NULL DEFAULT '1.0.0',
+    idempotency_token TEXT UNIQUE,
+    created_at INTEGER NOT NULL
+);
+
 -- Indices for rapid lookup & expiration queries
 CREATE INDEX IF NOT EXISTS idx_rooms_code ON rooms(room_code);
 CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms(status);
 CREATE INDEX IF NOT EXISTS idx_rooms_expires ON rooms(expires_at);
 CREATE INDEX IF NOT EXISTS idx_rooms_created_by ON rooms(created_by);
 CREATE INDEX IF NOT EXISTS idx_participants_room ON participants(room_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at);
+CREATE INDEX IF NOT EXISTS idx_feedback_rating ON feedback(rating);
