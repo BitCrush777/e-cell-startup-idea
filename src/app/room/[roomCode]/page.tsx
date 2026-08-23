@@ -522,6 +522,7 @@ export default function RoomChatPage() {
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
         roomCode={room.roomCode}
+        joinUrl={room.joinUrl}
       />
 
       {/* File Share Modal */}

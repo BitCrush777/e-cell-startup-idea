@@ -30,9 +30,9 @@ export default function HomePage() {
         <BlurFade delay={0.1}>
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0D111A] border border-white/10 text-xs font-semibold mb-6 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-300">Military-Grade Ephemeral Protocol</span>
+            <span className="text-slate-300">Volatile Ephemeral Protocol</span>
             <span className="text-slate-500">•</span>
-            <span className="text-primary-light font-mono">Zero Logs</span>
+            <span className="text-primary-light font-mono">Zero Server Logs</span>
           </div>
         </BlurFade>
 
