@@ -75,10 +75,48 @@ export class RoomDurableObject {
     this.env = env;
   }
 
-  private async loadRoom(): Promise<RoomState | null> {
+  private async loadRoom(inferredCode?: string): Promise<RoomState | null> {
     if (!this.room) {
       this.room = (await this.state.storage.get<RoomState>('room_data')) || null;
     }
+
+    // Auto-initialize if empty and code is provided
+    if (!this.room && inferredCode) {
+      const now = Date.now();
+      const durationMinutes = 30;
+      this.room = {
+        id: 'room_' + inferredCode.replace(/[^A-Za-z0-9]/g, ''),
+        roomCode: inferredCode.toUpperCase().trim(),
+        joinUrl: `https://templink.in/join/${inferredCode.toUpperCase().trim()}`,
+        createdAt: now,
+        expiresAt: now + durationMinutes * 60 * 1000,
+        durationMinutes,
+        participantLimit: 2,
+        passwordProtected: false,
+        allowFiles: true,
+        notifyExpiration: true,
+        status: 'ACTIVE',
+        createdBy: 'system',
+        creatorName: 'TempLink Host',
+        participants: [],
+        messages: [
+          {
+            id: 'sys_' + Math.random().toString(36).substring(2, 8),
+            roomCode: inferredCode.toUpperCase().trim(),
+            senderId: 'system',
+            senderName: 'TempLink System',
+            content: 'Private channel established. End-to-end ephemeral session active.',
+            timestamp: now,
+            type: 'system',
+          },
+        ],
+      };
+      await this.saveRoom();
+      try {
+        await this.state.storage.setAlarm(this.room.expiresAt);
+      } catch {}
+    }
+
     if (this.room) {
       this.checkExpiration();
     }
@@ -101,7 +139,7 @@ export class RoomDurableObject {
       this.broadcast({
         type: 'room_expired',
         roomCode: this.room.roomCode,
-        reason: 'Room lifespan reached 0:00. Memory zeroized.',
+        reason: 'Room lifespan reached 0:00. Ephemeral memory zeroized.',
       });
       this.closeAllSockets(1000, 'Room expired');
       return true;
@@ -158,11 +196,20 @@ export class RoomDurableObject {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    await this.loadRoom();
+
+    // Extract roomCode from path if available
+    const roomMatch = url.pathname.match(/\/rooms\/([A-Za-z0-9-]+)/i);
+    const roomCodeFromUrl = roomMatch ? roomMatch[1].toUpperCase().trim() : undefined;
+
+    await this.loadRoom(roomCodeFromUrl);
 
     // 1. WebSocket Upgrade Handler
-    if (request.headers.get('Upgrade') === 'websocket') {
-      return this.handleWebSocket(request);
+    if (
+      request.headers.get('Upgrade') === 'websocket' ||
+      url.pathname.endsWith('/ws') ||
+      url.pathname.includes('/ws?')
+    ) {
+      return this.handleWebSocket(request, roomCodeFromUrl);
     }
 
     // 2. Initialize Room
@@ -173,8 +220,8 @@ export class RoomDurableObject {
       const creatorId = data.creatorParticipantId || 'p_' + Math.random().toString(36).substring(2, 9);
       const creatorName = data.creatorName || 'Creator';
       const internalId = data.roomId || data.id || 'room_' + Math.random().toString(36).substring(2, 9);
-      const roomCode = data.roomCode.toUpperCase().trim();
-      const joinUrl = data.joinUrl || `https://templink.app/join/${roomCode}`;
+      const roomCode = (data.roomCode || roomCodeFromUrl || 'UNKNOWN').toUpperCase().trim();
+      const joinUrl = data.joinUrl || `https://templink.in/join/${roomCode}`;
 
       const creator: Participant = {
         participantId: creatorId,
@@ -215,7 +262,9 @@ export class RoomDurableObject {
       };
 
       await this.saveRoom();
-      await this.state.storage.setAlarm(this.room.expiresAt);
+      try {
+        await this.state.storage.setAlarm(this.room.expiresAt);
+      } catch {}
 
       return new Response(JSON.stringify({ success: true, room: this.room }), {
         headers: { 'Content-Type': 'application/json' },
@@ -223,14 +272,14 @@ export class RoomDurableObject {
     }
 
     // 3. Get Room State
-    if (url.pathname === '/state' && request.method === 'GET') {
+    if ((url.pathname === '/state' || url.pathname.endsWith('/validate')) && request.method === 'GET') {
       if (!this.room) {
-        return new Response(JSON.stringify({ success: false, error: 'Room not found' }), {
+        return new Response(JSON.stringify({ success: false, valid: false, error: 'Room not found' }), {
           status: 404,
           headers: { 'Content-Type': 'application/json' },
         });
       }
-      return new Response(JSON.stringify({ success: true, room: this.room }), {
+      return new Response(JSON.stringify({ success: true, valid: true, room: this.room }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -244,15 +293,15 @@ export class RoomDurableObject {
         });
       }
 
-      if (this.room.status === 'EXPIRED' || this.room.status === 'ENDED') {
+      if (this.room.status === 'EXPIRED' || this.room.status === 'ENDED' || Date.now() >= this.room.expiresAt) {
         return new Response(
           JSON.stringify({ success: false, error: 'Room has expired and was zeroized.' }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
+          { status: 410, headers: { 'Content-Type': 'application/json' } }
         );
       }
 
       const body: any = await request.json();
-      const { participantId, participantName, password } = body;
+      const { participantId, participantName, displayName, password } = body;
 
       if (this.room.passwordProtected && this.room.passwordHash && this.room.passwordHash !== password) {
         return new Response(JSON.stringify({ success: false, error: 'Incorrect room password.' }), {
@@ -275,7 +324,7 @@ export class RoomDurableObject {
 
         participant = {
           participantId: participantId || 'p_' + Math.random().toString(36).substring(2, 9),
-          displayName: participantName || 'Member',
+          displayName: displayName || participantName || 'Member',
           role: 'member',
           joinedAt: Date.now(),
           isOnline: true,
@@ -315,10 +364,10 @@ export class RoomDurableObject {
     }
 
     // 5. Send Message HTTP Fallback
-    if (url.pathname === '/message' && request.method === 'POST') {
+    if (url.pathname.endsWith('/messages') && request.method === 'POST') {
       if (!this.room || this.room.status === 'EXPIRED' || this.room.status === 'ENDED') {
         return new Response(JSON.stringify({ success: false, error: 'Room unavailable' }), {
-          status: 400,
+          status: 410,
           headers: { 'Content-Type': 'application/json' },
         });
       }
@@ -327,7 +376,7 @@ export class RoomDurableObject {
       const sender = this.room.participants.find((p) => p.participantId === body.senderId);
 
       const msg: Message = {
-        id: body.id || Math.random().toString(36).substring(2, 9),
+        id: body.id || 'msg_' + Math.random().toString(36).substring(2, 9),
         roomCode: this.room.roomCode,
         senderId: body.senderId,
         senderName: sender?.displayName || body.senderName || 'Anonymous',
@@ -376,37 +425,106 @@ export class RoomDurableObject {
       });
     }
 
-    return new Response('Not Found', { status: 404 });
+    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
   }
 
-  private handleWebSocket(request: Request): Response {
-    if (!this.room || this.room.status === 'EXPIRED' || this.room.status === 'ENDED') {
+  private handleWebSocket(request: Request, inferredCode?: string): Response {
+    const url = new URL(request.url);
+    const participantId = url.searchParams.get('participantId') || 'p_' + Math.random().toString(36).substring(2, 9);
+    const displayName = url.searchParams.get('displayName') || url.searchParams.get('participantName') || 'Guest';
+
+    if (!this.room && inferredCode) {
+      const now = Date.now();
+      const durationMinutes = 30;
+      this.room = {
+        id: 'room_' + inferredCode.replace(/[^A-Za-z0-9]/g, ''),
+        roomCode: inferredCode.toUpperCase().trim(),
+        joinUrl: `https://templink.in/join/${inferredCode.toUpperCase().trim()}`,
+        createdAt: now,
+        expiresAt: now + durationMinutes * 60 * 1000,
+        durationMinutes,
+        participantLimit: 2,
+        passwordProtected: false,
+        allowFiles: true,
+        notifyExpiration: true,
+        status: 'ACTIVE',
+        createdBy: participantId,
+        creatorName: displayName,
+        participants: [
+          {
+            participantId,
+            displayName,
+            role: 'creator',
+            joinedAt: now,
+            isOnline: true,
+          },
+        ],
+        messages: [
+          {
+            id: 'sys_' + Math.random().toString(36).substring(2, 8),
+            roomCode: inferredCode.toUpperCase().trim(),
+            senderId: 'system',
+            senderName: 'TempLink System',
+            content: 'Private channel established. End-to-end ephemeral session active.',
+            timestamp: now,
+            type: 'system',
+          },
+        ],
+      };
+      this.saveRoom();
+    }
+
+    if (!this.room || this.room.status === 'EXPIRED' || this.room.status === 'ENDED' || Date.now() >= this.room.expiresAt) {
       return new Response('Room expired or unavailable', { status: 410 });
     }
 
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
 
-    const url = new URL(request.url);
-    const participantId = url.searchParams.get('participantId') || 'guest';
-    const displayName = url.searchParams.get('displayName') || url.searchParams.get('participantName') || 'Guest';
-
     server.accept();
 
-    // Map the WebSocket strictly to the authenticated participantId
+    // Map WebSocket connection strictly to this participant session
     this.sessions.set(server, { participantId, displayName });
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`[ROOM] participant connected -> participantId: ${participantId}, roomCode: ${this.room.roomCode}`);
-    }
+    // Ensure participant is in room.participants and marked online
+    let p = this.room.participants.find((x) => x.participantId === participantId);
+    let isNewParticipant = false;
 
-    // Mark participant online in room state
-    const p = this.room.participants.find((x) => x.participantId === participantId);
-    if (p) {
+    if (!p) {
+      if (this.room.participants.length < this.room.participantLimit) {
+        p = {
+          participantId,
+          displayName,
+          role: this.room.participants.length === 0 ? 'creator' : 'member',
+          joinedAt: Date.now(),
+          isOnline: true,
+        };
+        this.room.participants.push(p);
+        this.room.status = 'ACTIVE';
+        isNewParticipant = true;
+      }
+    } else {
       p.isOnline = true;
+      if (displayName && displayName !== 'Guest') {
+        p.displayName = displayName;
+      }
     }
 
-    // Send current room state on connection
+    this.saveRoom();
+
+    // Notify others if a new participant joined
+    if (isNewParticipant && p) {
+      this.broadcast(
+        {
+          type: 'participant_joined',
+          roomCode: this.room.roomCode,
+          participant: p,
+        },
+        server
+      );
+    }
+
+    // Send authoritative room state directly to the connecting client
     server.send(
       JSON.stringify({
         type: 'room_state',
@@ -424,9 +542,10 @@ export class RoomDurableObject {
         }
 
         if (data.type === 'message') {
-          // Authoritatively assign senderId from the registered connection session!
+          // Authoritative message relay
+          const msgId = data.id || 'msg_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
           const msg: Message = {
-            id: data.id || Math.random().toString(36).substring(2, 9),
+            id: msgId,
             roomCode: this.room.roomCode,
             senderId: session.participantId,
             senderName: session.displayName,
@@ -436,13 +555,10 @@ export class RoomDurableObject {
             file: data.file,
           };
 
-          if (process.env.NODE_ENV !== 'production') {
-            console.log(`[MESSAGE] roomCode: ${this.room.roomCode}, senderId: ${session.participantId}`);
-          }
-
           this.room.messages.push(msg);
           await this.saveRoom();
 
+          // Broadcast to ALL sockets in the room
           this.broadcast({
             type: 'message',
             roomCode: this.room.roomCode,
@@ -450,10 +566,6 @@ export class RoomDurableObject {
           });
         } else if (data.type === 'typing') {
           const isTyping = Boolean(data.typing);
-          if (process.env.NODE_ENV !== 'production') {
-            console.log(`[TYPING] roomCode: ${this.room.roomCode}, participantId: ${session.participantId}, typing: ${isTyping}`);
-          }
-
           this.broadcast(
             {
               type: 'typing',
@@ -462,7 +574,7 @@ export class RoomDurableObject {
               displayName: session.displayName,
               typing: isTyping,
             },
-            server // Don't echo back to the sender
+            server // Do not echo back to sender
           );
         } else if (data.type === 'ping') {
           server.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));

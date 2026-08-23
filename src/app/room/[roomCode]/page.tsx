@@ -133,7 +133,22 @@ export default function RoomChatPage() {
         realtimeClientRef.current = client;
 
         client.subscribe((event) => {
-          if (event.type === 'message') {
+          if (event.type === 'room_state') {
+            if (event.state) {
+              setRoom((prev) => {
+                if (!prev) return event.state as Room;
+                return { ...prev, ...event.state };
+              });
+              if (event.state.messages && event.state.messages.length > 0) {
+                setMessages((prev) => {
+                  const map = new Map<string, Message>();
+                  prev.forEach((m) => map.set(m.id, m));
+                  event.state.messages?.forEach((m) => map.set(m.id, m));
+                  return Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
+                });
+              }
+            }
+          } else if (event.type === 'message') {
             setMessages((prev) => {
               if (prev.some((m) => m.id === event.message.id)) {
                 return prev;

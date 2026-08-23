@@ -6,29 +6,31 @@ export class RealtimeClient {
   private roomCode: string;
   private participant: Participant;
   private ws: WebSocket | null = null;
-  private broadcastChannel: BroadcastChannel | null = null;
   private listeners: RealtimeListener[] = [];
   private isExplicitlyClosed = false;
   private isExpired = false;
   private reconnectAttempts = 0;
+  private reconnectTimeout: any = null;
   private pingInterval: any = null;
+  private connectionStatus: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'expired' = 'disconnected';
 
   constructor(roomCode: string, participant: Participant) {
     this.roomCode = roomCode.toUpperCase().trim();
     this.participant = participant;
+  }
 
-    // Cross-tab broadcast synchronization
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      this.broadcastChannel = new BroadcastChannel(`templink_do_${this.roomCode}`);
-      this.broadcastChannel.onmessage = (e) => {
-        const event = e.data as RoomEvent;
-        this.notifyListeners(event);
-      };
-    }
+  public getStatus(): 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'expired' {
+    return this.connectionStatus;
   }
 
   public connect(): void {
     if (typeof window === 'undefined' || this.isExplicitlyClosed || this.isExpired) return;
+
+    // Clear any pending reconnect timer
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = process.env.NEXT_PUBLIC_WS_HOST || window.location.host;
@@ -36,11 +38,21 @@ export class RealtimeClient {
       this.participant.participantId
     )}&displayName=${encodeURIComponent(this.participant.displayName)}`;
 
+    this.connectionStatus = this.reconnectAttempts > 0 ? 'reconnecting' : 'connecting';
+    this.notifyListeners({ type: 'connection_status', status: this.connectionStatus as any });
+
     try {
+      if (this.ws) {
+        try {
+          this.ws.close();
+        } catch {}
+      }
+
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
         this.reconnectAttempts = 0;
+        this.connectionStatus = 'connected';
         this.notifyListeners({ type: 'connection_status', status: 'connected' });
         this.startHeartbeat();
       };
@@ -50,31 +62,39 @@ export class RealtimeClient {
           const data = JSON.parse(event.data);
           if (data.type === 'room_expired' || data.type === 'room_ended') {
             this.isExpired = true;
+            this.connectionStatus = 'expired';
           }
           this.notifyListeners(data);
-          // Broadcast to other tabs
-          this.broadcastChannel?.postMessage(data);
         } catch {}
       };
 
       this.ws.onerror = () => {
-        this.notifyListeners({ type: 'connection_status', status: 'reconnecting' });
+        if (!this.isExpired && !this.isExplicitlyClosed) {
+          this.connectionStatus = 'reconnecting';
+          this.notifyListeners({ type: 'connection_status', status: 'reconnecting' });
+        }
       };
 
       this.ws.onclose = (event) => {
         this.stopHeartbeat();
         if (event.code === 410 || event.reason === 'Room expired' || this.isExpired) {
           this.isExpired = true;
+          this.connectionStatus = 'expired';
           this.notifyListeners({
             type: 'room_expired',
             roomCode: this.roomCode,
-            reason: 'Room has expired and was securely erased.',
+            reason: 'Room has expired and was zeroized.',
           });
           return;
         }
 
         if (!this.isExplicitlyClosed && !this.isExpired) {
+          this.connectionStatus = 'reconnecting';
+          this.notifyListeners({ type: 'connection_status', status: 'reconnecting' });
           this.scheduleReconnect();
+        } else {
+          this.connectionStatus = 'disconnected';
+          this.notifyListeners({ type: 'connection_status', status: 'disconnected' });
         }
       };
     } catch {
@@ -85,8 +105,9 @@ export class RealtimeClient {
   private scheduleReconnect(): void {
     if (this.isExplicitlyClosed || this.isExpired) return;
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts), 10000);
-    setTimeout(() => {
+    // Exponential backoff capped at 4s for fast mobile network recovery
+    const delay = Math.min(800 * Math.pow(1.3, this.reconnectAttempts), 4000);
+    this.reconnectTimeout = setTimeout(() => {
       if (!this.isExplicitlyClosed && !this.isExpired) {
         this.connect();
       }
@@ -97,9 +118,11 @@ export class RealtimeClient {
     this.stopHeartbeat();
     this.pingInterval = setInterval(() => {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({ type: 'ping' }));
+        try {
+          this.ws.send(JSON.stringify({ type: 'ping' }));
+        } catch {}
       }
-    }, 20000);
+    }, 15000);
   }
 
   private stopHeartbeat(): void {
@@ -117,11 +140,15 @@ export class RealtimeClient {
   }
 
   private notifyListeners(event: RoomEvent): void {
-    this.listeners.forEach((l) => l(event));
+    this.listeners.forEach((l) => {
+      try {
+        l(event);
+      } catch {}
+    });
   }
 
   public sendMessage(content: string, file?: any, customId?: string): Message {
-    const msgId = customId || 'msg_' + Math.random().toString(36).substring(2, 9);
+    const msgId = customId || 'msg_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
     const message: Message = {
       id: msgId,
       roomCode: this.roomCode,
@@ -131,12 +158,6 @@ export class RealtimeClient {
       timestamp: Date.now(),
       type: file ? 'file' : 'text',
       file,
-    };
-
-    const event: RoomEvent = {
-      type: 'message',
-      roomCode: this.roomCode,
-      message,
     };
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -150,45 +171,36 @@ export class RealtimeClient {
       );
     }
 
-    // Local echo & cross-tab sync
-    this.notifyListeners(event);
-    this.broadcastChannel?.postMessage(event);
-
     return message;
   }
 
   public sendTyping(isTyping: boolean): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(
-        JSON.stringify({
-          type: 'typing',
-          typing: isTyping,
-        })
-      );
+      try {
+        this.ws.send(
+          JSON.stringify({
+            type: 'typing',
+            typing: isTyping,
+          })
+        );
+      } catch {}
     }
-
-    const event: RoomEvent = {
-      type: 'typing',
-      roomCode: this.roomCode,
-      participantId: this.participant.participantId,
-      displayName: this.participant.displayName,
-      typing: isTyping,
-    };
-
-    this.broadcastChannel?.postMessage(event);
   }
 
   public disconnect(): void {
     this.isExplicitlyClosed = true;
     this.stopHeartbeat();
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
     if (this.ws) {
-      this.ws.close();
+      try {
+        this.ws.close();
+      } catch {}
       this.ws = null;
     }
-    if (this.broadcastChannel) {
-      this.broadcastChannel.close();
-      this.broadcastChannel = null;
-    }
+    this.connectionStatus = 'disconnected';
     this.listeners = [];
   }
 }
