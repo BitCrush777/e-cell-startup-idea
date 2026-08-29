@@ -243,22 +243,24 @@ export default function PricingPage() {
           const isCurrent = currentPlan === plan.id.toUpperCase();
 
           return (
-            <BlurFade key={plan.id} delay={0.2 + idx * 0.1}>
-              <div
-                className={`glass-panel rounded-3xl p-8 flex flex-col justify-between relative transition-all duration-300 h-full overflow-hidden ${
-                  plan.popular
-                    ? 'border-primary/50 bg-[#080B12]/95 shadow-[0_0_40px_rgba(99,102,241,0.25)] md:-translate-y-2'
-                    : 'border-white/10 bg-[#080B12]/80 hover:border-white/20'
-                }`}
-              >
+            <BlurFade key={plan.id} delay={0.2 + idx * 0.1} className="h-full">
+              <div className="relative pt-3.5 h-full">
                 {plan.popular && (
-                  <>
-                    <BorderBeam size={240} duration={8} colorFrom="#6366F1" colorTo="#A855F7" />
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#6366F1] to-[#4F46E5] text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)] border border-white/20 z-10">
-                      {plan.badge}
-                    </div>
-                  </>
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#6366F1] to-[#4F46E5] text-white text-[10px] font-bold uppercase tracking-wider px-4 py-1 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)] border border-white/20 z-20 whitespace-nowrap">
+                    {plan.badge}
+                  </div>
                 )}
+
+                <div
+                  className={`glass-panel rounded-3xl p-8 flex flex-col justify-between relative transition-all duration-300 h-full overflow-hidden ${
+                    plan.popular
+                      ? 'border-primary/50 bg-[#080B12]/95 shadow-[0_0_40px_rgba(99,102,241,0.25)]'
+                      : 'border-white/10 bg-[#080B12]/80 hover:border-white/20'
+                  }`}
+                >
+                  {plan.popular && (
+                    <BorderBeam size={240} duration={8} colorFrom="#6366F1" colorTo="#A855F7" />
+                  )}
 
                 <div>
                   {/* Header & Plan Name */}
@@ -334,8 +336,9 @@ export default function PricingPage() {
                   )}
                 </div>
               </div>
-            </BlurFade>
-          );
+            </div>
+          </BlurFade>
+        );
         })}
       </div>
 
