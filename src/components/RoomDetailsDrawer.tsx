@@ -82,14 +82,14 @@ export default function RoomDetailsDrawer({
           {/* Security Info Bento */}
           <div className="grid grid-cols-2 gap-2.5">
             <div className="bg-[#122131]/50 rounded-xl p-3.5 border border-white/5 flex flex-col gap-1">
-              <span className="material-symbols-outlined text-primary text-[20px]">enhanced_encryption</span>
-              <span className="text-[10px] uppercase font-semibold text-on-surface-variant tracking-wider">E2E Protocol</span>
-              <span className="text-xs font-semibold text-on-surface">Active</span>
+              <span className="material-symbols-outlined text-primary text-[20px]">security</span>
+              <span className="text-[10px] uppercase font-semibold text-on-surface-variant tracking-wider">Connection</span>
+              <span className="text-xs font-semibold text-on-surface">Secure WSS</span>
             </div>
             <div className="bg-[#122131]/50 rounded-xl p-3.5 border border-white/5 flex flex-col gap-1">
               <span className="material-symbols-outlined text-primary text-[20px]">history_toggle_off</span>
-              <span className="text-[10px] uppercase font-semibold text-on-surface-variant tracking-wider">Auto-Destruct</span>
-              <span className="text-xs font-semibold text-on-surface">Enabled</span>
+              <span className="text-[10px] uppercase font-semibold text-on-surface-variant tracking-wider">Expiration</span>
+              <span className="text-xs font-semibold text-on-surface">Automated TTL</span>
             </div>
           </div>
 
@@ -166,7 +166,7 @@ export default function RoomDetailsDrawer({
             {showConfirmEnd ? (
               <div className="p-3 bg-red-950/40 border border-red-500/30 rounded-xl flex flex-col gap-2 animate-fade-in">
                 <p className="text-xs text-red-200 text-center font-medium">
-                  End room immediately? All session data will vanish.
+                  End room immediately? All session communication will end.
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <button

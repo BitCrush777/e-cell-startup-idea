@@ -133,7 +133,7 @@ export default function RoomDetailsModal({
           {showConfirmEnd ? (
             <div className="p-3 bg-red-950/40 border border-red-500/30 rounded-xl flex flex-col gap-2 animate-fade-in">
               <p className="text-xs text-red-200 text-center font-medium">
-                End room immediately? All session data will vanish forever.
+                End room immediately? All session communication will end.
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <button

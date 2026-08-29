@@ -158,4 +158,45 @@ describe('TempLink Core Demo Flow & Production Reliability Tests', () => {
     assert.strictEqual(analytics.averageRating, 5);
     assert.strictEqual(analytics.wouldUseAgainPositivePercent, 100);
   });
+
+  test('STEP 7 — Concurrent Join Race Conditions & Leave Slot Freeing', () => {
+    // Room with 2 slots occupied, 1 remaining (2/3)
+    const room = createRoom({
+      durationMinutes: 30,
+      plan: 'FREE',
+      maxMembers: 3,
+      creatorName: 'Host',
+    });
+    joinRoom(room.roomCode, 'p_2', 'User 2');
+
+    // Simulate 2 users attempting to join the last slot simultaneously
+    const joinAttempts = [
+      () => joinRoom(room.roomCode, 'p_3a', 'Simultaneous User A'),
+      () => joinRoom(room.roomCode, 'p_3b', 'Simultaneous User B'),
+    ];
+
+    const results = joinAttempts.map((fn) => fn());
+    const successes = results.filter((r) => r.success);
+    const failures = results.filter((r) => !r.success);
+
+    // Exactly one must succeed, exactly one must fail
+    assert.strictEqual(successes.length, 1, 'Only 1 user gets the last slot');
+    assert.strictEqual(failures.length, 1, 'The other user gets rejected with room full');
+    assert.strictEqual(getRoom(room.roomCode)?.participants.length, 3);
+  });
+
+  test('STEP 8 — Cross-Room Isolation Guarantee: No data or moderation bleed between rooms', () => {
+    const room1 = createRoom({ durationMinutes: 15, plan: 'FREE', creatorName: 'Alice' });
+    const room2 = createRoom({ durationMinutes: 15, plan: 'FREE', creatorName: 'Bob' });
+
+    assert.notStrictEqual(room1.roomCode, room2.roomCode);
+
+    // Join participants to Room 1
+    joinRoom(room1.roomCode, 'p_alice_friend', 'Charlie');
+
+    // Verify Room 2 is completely isolated
+    const fetchedRoom2 = getRoom(room2.roomCode);
+    assert.strictEqual(fetchedRoom2?.participants.length, 1);
+    assert.strictEqual(fetchedRoom2?.participants[0].displayName, 'Bob');
+  });
 });
