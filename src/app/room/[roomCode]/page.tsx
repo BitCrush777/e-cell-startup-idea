@@ -48,6 +48,7 @@ export default function RoomChatPage() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isNearBottomRef = useRef<boolean>(true);
   const processedWarningEventsRef = useRef<Set<string>>(new Set());
+  const connectionStatusRef = useRef<string>('connecting');
 
   // Check if scroll is near bottom (within 100px)
   const handleScroll = () => {
@@ -237,6 +238,14 @@ export default function RoomChatPage() {
               client.disconnect();
             } else if (event.type === 'connection_status') {
               setConnectionStatus(event.status);
+              if (event.status === 'connected') {
+                if (connectionStatusRef.current === 'reconnecting') {
+                  toast('Connection restored', 'success', 2500, 'connection-restored');
+                }
+                connectionStatusRef.current = 'connected';
+              } else if (event.status === 'reconnecting') {
+                connectionStatusRef.current = 'reconnecting';
+              }
             } else if (event.type === 'room_expiring') {
               toast(`Room expires in ${event.remainingSeconds} seconds!`, 'warning');
             } else if (event.type === 'room_expired') {
@@ -440,7 +449,13 @@ export default function RoomChatPage() {
                 aria-label={`${room.participants.filter((p) => p.isOnline).length} of ${room.maxMembers || room.maxParticipants || 3} members currently connected`}
               >
                 <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                {room.participants.filter((p) => p.isOnline).length} / {room.maxMembers || room.maxParticipants || 3} members • {connectionStatus}
+                {room.participants.filter((p) => p.isOnline).length} / {room.maxMembers || room.maxParticipants || 3} members • {
+                  connectionStatus === 'connected'
+                    ? 'Connected'
+                    : connectionStatus === 'reconnecting'
+                    ? 'Reconnecting...'
+                    : 'Disconnected'
+                }
               </span>
             </div>
           </div>

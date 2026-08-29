@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
+import HelpModal from './HelpModal';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -12,6 +13,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -208,6 +210,18 @@ export default function Navbar() {
             </Link>
           )}
 
+          {/* Help / How it works dialog trigger */}
+          <button
+            type="button"
+            onClick={() => setIsHelpOpen(true)}
+            className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors hidden sm:flex items-center gap-1 text-xs font-semibold"
+            title="How TempLink Works"
+            aria-label="How TempLink Works"
+          >
+            <span className="material-symbols-outlined text-[18px]">help_outline</span>
+            <span className="hidden lg:inline">Help</span>
+          </button>
+
           {/* Primary CTA (Unconditional) */}
           <Link
             href="/create"
@@ -230,6 +244,9 @@ export default function Navbar() {
           </button>
         </div>
       </div>
+
+      {/* Help Modal */}
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (

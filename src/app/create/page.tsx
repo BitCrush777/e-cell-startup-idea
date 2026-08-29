@@ -118,7 +118,7 @@ export default function CreateRoomPage() {
 
       setCreatedRoom(room);
       setCreationState('ready');
-      toast(`Private room ${room.roomCode} is ready!`, 'success');
+      toast('Private room created', 'success');
 
       // Initialize real-time waiting connection
       const client = new RealtimeClient(room.roomCode, {
@@ -154,13 +154,13 @@ export default function CreateRoomPage() {
   const handleCopyCode = () => {
     if (!createdRoom) return;
     navigator.clipboard.writeText(createdRoom.roomCode);
-    toast(`Room code ${createdRoom.roomCode} copied!`, 'success');
+    toast('Room code copied', 'success');
   };
 
   const handleCopyLink = () => {
     if (!createdRoom) return;
     navigator.clipboard.writeText(createdRoom.joinUrl);
-    toast('Private room link copied!', 'success');
+    toast('Private room link copied', 'success');
   };
 
   const handleNativeShare = async () => {

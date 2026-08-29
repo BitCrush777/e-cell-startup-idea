@@ -84,7 +84,7 @@ function JoinRoomContent() {
       setValidatedRoom(null);
       if (result.status === 'expired') {
         setValidationState('expired');
-        setErrorMessage('This temporary conversation has ended.');
+        setErrorMessage('This temporary room has expired.');
       } else if (result.status === 'terminated' || result.code === 'ROOM_TERMINATED') {
         setValidationState('invalid');
         setErrorMessage("This room was closed because of repeated violations of the conversation guidelines.");
@@ -96,8 +96,8 @@ function JoinRoomContent() {
         setMaxMembers(max);
         setErrorMessage(
           plan === 'FREE'
-            ? `This Free room has reached its ${max}-member limit.`
-            : `This ${plan} room has reached its ${max}-member limit.`
+            ? `This room is full (${max}-member Free limit reached).`
+            : `This room is full (${max}-member ${plan} limit reached).`
         );
       } else if (result.status === 'ended') {
         setValidationState('ended');
@@ -117,7 +117,7 @@ function JoinRoomContent() {
 
       if (isScanned && !hasHandledScanRef.current) {
         hasHandledScanRef.current = true;
-        toast('QR code scanned successfully!', 'success', 3000, 'qr-scan-success');
+        toast('QR code scanned successfully', 'success', 3000, 'qr-scan-success');
         setScannedBadge(true);
 
         // Clean query parameter without page reload
@@ -200,7 +200,7 @@ function JoinRoomContent() {
         );
       }
 
-      toast('Connected to private room!', 'success');
+      toast('Connected to room', 'success');
       router.push(`/room/${cleanCode}`);
     } catch (err: any) {
       setIsJoining(false);
@@ -208,13 +208,18 @@ function JoinRoomContent() {
         setValidationState('full');
         setErrorMessage(
           err.plan === 'FREE' || roomPlan === 'FREE'
-            ? 'This Free room has reached its 3-member limit.'
-            : 'This Pro room has reached its 10-member limit.'
+            ? 'This room is full (3-member Free limit reached).'
+            : 'This room is full (10-member Pro limit reached).'
         );
+        toast('This room is full', 'error');
+      } else if (err.code === 'ROOM_EXPIRED' || (err.message && err.message.toLowerCase().includes('expired'))) {
+        setValidationState('expired');
+        setErrorMessage('This temporary room has expired.');
+        toast('This temporary room has expired', 'error');
       } else {
-        setErrorMessage(err.message || 'Unable to join room. Please check the code.');
+        setErrorMessage(err.message || "We couldn't connect to this room. Please try again.");
+        toast("We couldn't connect to this room. Please try again.", 'error');
       }
-      toast(err.message || 'Unable to join room', 'error');
     }
   };
 
