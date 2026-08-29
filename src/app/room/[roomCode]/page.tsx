@@ -498,17 +498,40 @@ export default function RoomChatPage() {
                 </div>
               </div>
 
-              {/* Chat Message Stream */}
-              {messages.map((msg) => {
-                const isMine = msg.senderId === currentParticipant.participantId;
-                return (
-                  <ChatMessage
-                    key={msg.id}
-                    message={msg}
-                    isMe={isMine}
-                  />
-                );
-              })}
+              {/* Empty Chat State for First-Time Room Conversations */}
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center text-center py-12 px-4 gap-3.5 my-auto animate-fade-in">
+                  <div className="w-14 h-14 rounded-2xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light shadow-lg">
+                    <span className="material-symbols-outlined text-[28px]">chat_bubble_outline</span>
+                  </div>
+                  <div className="flex flex-col gap-1 max-w-sm">
+                    <h3 className="text-base font-bold text-white">
+                      Start the conversation
+                    </h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Say hello — your conversation is limited to this temporary room.
+                    </p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0D111A] border border-white/10 text-[11px] text-slate-400">
+                    <span className="material-symbols-outlined text-[14px] text-primary-light">fingerprint</span>
+                    <span>
+                      You&apos;re using temporary identity <strong className="text-white">{currentParticipant.displayName}</strong>
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* Chat Message Stream */
+                messages.map((msg) => {
+                  const isMine = msg.senderId === currentParticipant.participantId;
+                  return (
+                    <ChatMessage
+                      key={msg.id}
+                      message={msg}
+                      isMe={isMine}
+                    />
+                  );
+                })
+              )}
 
               {/* Typing Indicator */}
               <TypingIndicator typingNames={typingNames} />

@@ -39,23 +39,23 @@ export default function HomePage() {
         {/* Hero Headline */}
         <BlurFade delay={0.2}>
           <h1 className="font-display text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white max-w-4xl leading-[1.1] mb-6">
-            Temporary communication <br className="hidden sm:inline" />
+            Private conversations. <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-white via-slate-200 to-primary-light bg-clip-text text-transparent">
-              without the permanent connection.
+              Temporary by design.
             </span>
           </h1>
         </BlurFade>
 
         {/* Subtitle */}
         <BlurFade delay={0.3}>
-          <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl font-normal leading-relaxed mb-10">
-            Create a temporary private room, share a QR code or room code, communicate in real time, and let the room expire when the conversation is over.
+          <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl font-normal leading-relaxed mb-8">
+            Create a temporary room, share a code or QR, communicate in real time, and let the room expire when you&apos;re done.
           </p>
         </BlurFade>
 
         {/* Main CTAs */}
         <BlurFade delay={0.4}>
-          <div className="flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto mb-16">
+          <div className="flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto mb-4">
             <Link href="/create" className="w-full sm:w-auto">
               <ShimmerButton className="w-full sm:w-auto px-8 py-3.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2">
                 <span>Create Private Room</span>
@@ -69,6 +69,51 @@ export default function HomePage() {
               <span className="material-symbols-outlined text-[18px]">vpn_key</span>
               <span>Join a Room</span>
             </Link>
+          </div>
+          <p className="text-xs text-slate-500 font-medium mb-12">
+            No account required for basic use.
+          </p>
+        </BlurFade>
+
+        {/* 4-Step Quick Visual Onboarding (How TempLink Works) */}
+        <BlurFade delay={0.45} className="w-full max-w-4xl mb-14">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-left">
+            <div className="bg-[#080B12]/80 border border-white/10 rounded-2xl p-4 flex flex-col gap-2 shadow-sm hover:border-primary/30 transition-all">
+              <span className="font-mono text-xs font-bold text-primary-light bg-[#101621] w-7 h-7 rounded-lg flex items-center justify-center border border-white/5">
+                01
+              </span>
+              <h4 className="font-bold text-sm text-white">Create a room</h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Choose a duration and generate a private room in seconds.
+              </p>
+            </div>
+            <div className="bg-[#080B12]/80 border border-white/10 rounded-2xl p-4 flex flex-col gap-2 shadow-sm hover:border-primary/30 transition-all">
+              <span className="font-mono text-xs font-bold text-primary-light bg-[#101621] w-7 h-7 rounded-lg flex items-center justify-center border border-white/5">
+                02
+              </span>
+              <h4 className="font-bold text-sm text-white">Share QR or code</h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Invite members with an 8-character code or camera scan.
+              </p>
+            </div>
+            <div className="bg-[#080B12]/80 border border-white/10 rounded-2xl p-4 flex flex-col gap-2 shadow-sm hover:border-primary/30 transition-all">
+              <span className="font-mono text-xs font-bold text-primary-light bg-[#101621] w-7 h-7 rounded-lg flex items-center justify-center border border-white/5">
+                03
+              </span>
+              <h4 className="font-bold text-sm text-white">Chat in real time</h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Send messages and files with SafeRoom active protection.
+              </p>
+            </div>
+            <div className="bg-[#080B12]/80 border border-white/10 rounded-2xl p-4 flex flex-col gap-2 shadow-sm hover:border-primary/30 transition-all">
+              <span className="font-mono text-xs font-bold text-emerald-400 bg-[#101621] w-7 h-7 rounded-lg flex items-center justify-center border border-white/5">
+                04
+              </span>
+              <h4 className="font-bold text-sm text-white">Room expires</h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Session automatically closes when the countdown ends.
+              </p>
+            </div>
           </div>
         </BlurFade>
 

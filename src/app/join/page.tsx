@@ -234,7 +234,7 @@ function JoinRoomContent() {
             Join a Private Room
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Enter the 8-character code or scan a QR code to enter.
+            Enter the room code or scan the QR code shared with you.
           </p>
         </header>
 
@@ -266,13 +266,6 @@ function JoinRoomContent() {
                   <span className="material-symbols-outlined text-[14px]">content_paste</span>
                   Paste
                 </button>
-                <Link
-                  href="/scan"
-                  className="text-xs text-primary-light hover:underline flex items-center gap-1 font-semibold ml-1"
-                >
-                  <span className="material-symbols-outlined text-[14px]">qr_code_scanner</span>
-                  Scan QR
-                </Link>
               </div>
             </div>
 
@@ -293,7 +286,10 @@ function JoinRoomContent() {
               {/* Live Validation Indicator */}
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center">
                 {validationState === 'checking' && (
-                  <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <div className="flex items-center gap-1.5 text-xs text-primary-light font-mono animate-pulse">
+                    <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                    <span>Checking room...</span>
+                  </div>
                 )}
                 {validationState === 'valid' && (
                   <span className="material-symbols-outlined text-emerald-400 text-[22px]">
@@ -315,18 +311,18 @@ function JoinRoomContent() {
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Private Room Found ({validatedRoom.plan || 'Free'} Plan)
+                  Room Found ({validatedRoom.plan || 'Free'} Plan)
                 </span>
                 <span
                   className="bg-[#121824] px-2.5 py-0.5 rounded-lg border border-white/5 text-[10px] font-mono font-semibold text-primary-light"
                   aria-label={`${currentMembers} of ${maxMembers} members currently connected`}
                 >
-                  {currentMembers} / {maxMembers} Members Connected
+                  {currentMembers} / {maxMembers} Members
                 </span>
               </div>
               <div className="flex items-center justify-between pt-1">
                 <span className="text-xs text-slate-400 font-medium">
-                  Hosted by <strong className="text-white">{validatedRoom.creatorName}</strong>
+                  Room <strong className="text-white font-mono">{validatedRoom.roomCode}</strong>
                 </span>
                 <div className="flex items-center gap-1 text-xs font-mono">
                   <span className="material-symbols-outlined text-primary-light text-[15px]">timer</span>
@@ -440,31 +436,39 @@ function JoinRoomContent() {
           )}
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-1">
-            <Link
-              href="/"
-              className="btn-ghost py-3 px-6 rounded-xl text-xs font-semibold uppercase tracking-wider text-center order-2 sm:order-1"
+          <div className="flex flex-col gap-2.5 pt-1">
+            <ShimmerButton
+              type="submit"
+              disabled={isJoining || validationState === 'checking' || validationState === 'expired' || validationState === 'full' || code.length < 4}
+              className="w-full py-3.5 px-6 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-40"
             >
-              Cancel
-            </Link>
-            <div className="flex-1 order-1 sm:order-2">
-              <ShimmerButton
-                type="submit"
-                disabled={isJoining || validationState === 'checking' || validationState === 'expired' || validationState === 'full' || code.length < 4}
-                className="w-full py-3.5 px-6 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-40"
+              {isJoining ? (
+                <>
+                  <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Connecting to Room...
+                </>
+              ) : (
+                <>
+                  Join Room
+                  <span className="material-symbols-outlined text-[18px]">login</span>
+                </>
+              )}
+            </ShimmerButton>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <Link
+                href="/scan"
+                className="btn-ghost py-3 px-4 rounded-xl text-xs font-semibold uppercase tracking-wider text-center flex items-center justify-center gap-1.5"
               >
-                {isJoining ? (
-                  <>
-                    <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    Connecting to Room...
-                  </>
-                ) : (
-                  <>
-                    Join Room
-                    <span className="material-symbols-outlined text-[18px]">login</span>
-                  </>
-                )}
-              </ShimmerButton>
+                <span className="material-symbols-outlined text-[16px]">qr_code_scanner</span>
+                Scan QR Code
+              </Link>
+              <Link
+                href="/"
+                className="btn-ghost py-3 px-4 rounded-xl text-xs font-semibold uppercase tracking-wider text-center flex items-center justify-center gap-1.5"
+              >
+                Cancel
+              </Link>
             </div>
           </div>
         </form>

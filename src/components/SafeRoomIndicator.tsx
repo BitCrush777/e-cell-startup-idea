@@ -39,7 +39,7 @@ export function SafeRoomIndicator() {
                   <span className="material-symbols-outlined text-[18px]">shield</span>
                 </div>
                 <h3 id="saferoom-title" className="font-bold text-sm text-white">
-                  SafeRoom Active
+                  SafeRoom Protection
                 </h3>
               </div>
               <button
@@ -53,7 +53,7 @@ export function SafeRoomIndicator() {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              SafeRoom is an authoritative server-side moderation layer that prevents abusive content and harassment in real time to keep conversations respectful and safe.
+              TempLink can automatically block supported prohibited content and issue warnings for repeated violations to keep conversations respectful.
             </p>
 
             <div className="p-3 rounded-xl bg-[#0D111A] border border-white/10 flex items-start gap-2.5 text-[11px] text-slate-400">
@@ -61,7 +61,7 @@ export function SafeRoomIndicator() {
                 verified_user
               </span>
               <span>
-                Violations receive up to 2 individual warnings before the temporary room is automatically terminated.
+                Server-authoritative protection active for all room participants.
               </span>
             </div>
 

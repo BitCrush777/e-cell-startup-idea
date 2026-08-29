@@ -21,6 +21,7 @@ export default function CreateRoomPage() {
 
   // User Plan: 'FREE' | 'PRO' | 'BUSINESS' (detected from session/auth or default 'FREE')
   const [userPlan, setUserPlan] = useState<PlanType>('FREE');
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   // Smart Defaults: 30 mins, password OFF, files OFF, notify ON
   const [duration, setDuration] = useState<number>(30);
@@ -196,10 +197,10 @@ export default function CreateRoomPage() {
               Room Created ({createdRoom.plan || userPlan} Plan • Up to {maxCapacity} Members)
             </div>
             <h1 className="font-display text-2xl sm:text-3xl font-bold text-white mb-1">
-              Your Private Room is Ready
+              Your private room is ready
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
-              Share the one-time code or QR code to begin communicating.
+              Share this QR or room code to invite someone.
             </p>
           </header>
 
@@ -207,20 +208,25 @@ export default function CreateRoomPage() {
             {/* Border Beam Accent */}
             <BorderBeam size={200} duration={10} colorFrom="#6366F1" colorTo="#A855F7" />
 
-            {/* Live Status & Participants Banner */}
-            <div className="flex items-center justify-between p-3.5 bg-[#0D111A] rounded-2xl border border-white/10">
-              <div className="flex items-center gap-2.5">
-                <span className={`w-2.5 h-2.5 rounded-full ${someoneJoined ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'}`} />
-                <span className="text-xs font-semibold text-white">
-                  {someoneJoined ? 'Connected! Transitioning...' : 'Waiting for participants...'}
-                </span>
+            {/* Live Status & Waiting Banner */}
+            <div className="flex flex-col gap-1.5 p-3.5 bg-[#0D111A] rounded-2xl border border-white/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className={`w-2.5 h-2.5 rounded-full ${someoneJoined ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'}`} />
+                  <span className="text-xs font-semibold text-white">
+                    {someoneJoined ? 'Participant connected! Entering chat...' : 'Waiting for someone to join...'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-[#161E2E] text-primary-light font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg border border-white/5">
+                    {participantCount} / {maxCapacity} members
+                  </span>
+                  <CountdownTimer expiresAt={createdRoom.expiresAt} showIcon={false} />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="bg-[#161E2E] text-primary-light font-mono text-xs font-bold px-2.5 py-1 rounded-lg border border-white/5">
-                  {participantCount} / {maxCapacity} members
-                </span>
-                <CountdownTimer expiresAt={createdRoom.expiresAt} showIcon={false} />
-              </div>
+              <p className="text-[11px] text-slate-400 pl-5">
+                {someoneJoined ? 'Transitioning to private conversation session.' : 'Share the QR code or room link to invite participants.'}
+              </p>
             </div>
 
             {/* Dynamic QR Display */}
@@ -344,9 +350,14 @@ export default function CreateRoomPage() {
           {/* Section: Room Lifetime */}
           <section className="flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Room Duration
-              </label>
+              <div>
+                <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                  Room Duration
+                </label>
+                <span className="text-[11px] text-slate-500">
+                  Choose how long this temporary room stays active.
+                </span>
+              </div>
               <span className="material-symbols-outlined text-slate-500 text-[18px]">
                 timer
               </span>
@@ -408,9 +419,14 @@ export default function CreateRoomPage() {
           {/* Section: Maximum Members & Plan Capacity */}
           <section className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Maximum Members
-              </label>
+              <div>
+                <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
+                  Maximum Members
+                </label>
+                <span className="text-[11px] text-slate-500">
+                  Choose how many people can participate in this room.
+                </span>
+              </div>
               <span className="material-symbols-outlined text-slate-500 text-[18px]">
                 group
               </span>
@@ -462,96 +478,107 @@ export default function CreateRoomPage() {
 
           <hr className="border-white/10" />
 
-          {/* Section: Privacy Options */}
-          <section className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Privacy Options
-              </label>
-              <span className="material-symbols-outlined text-slate-500 text-[18px]">
-                shield
+          {/* Section: Expandable Advanced Options */}
+          <div className="flex flex-col">
+            <button
+              type="button"
+              onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+              className="flex items-center justify-between py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-slate-500">
+                  tune
+                </span>
+                <span>Advanced options</span>
+              </div>
+              <span className="material-symbols-outlined text-[20px] text-slate-500">
+                {isAdvancedOpen ? 'expand_less' : 'expand_more'}
               </span>
-            </div>
+            </button>
 
-            {/* Toggle: Password */}
-            <div
-              onClick={() => creationState !== 'loading' && setRequirePassword(!requirePassword)}
-              className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5"
-            >
-              <div className="flex flex-col">
-                <span className="text-xs sm:text-sm font-medium text-white">Require room password</span>
-                <span className="text-[11px] text-slate-400">Add secret passphrase protection.</span>
-              </div>
-              <div
-                className={`w-11 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
-                  requirePassword ? 'bg-[#6366F1]' : 'bg-[#161E2E]'
-                }`}
-              >
+            {isAdvancedOpen && (
+              <section className="flex flex-col gap-2 pt-3 pb-1 border-t border-white/5 animate-fade-in">
+                {/* Toggle: Password */}
                 <div
-                  className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                    requirePassword ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </div>
-            </div>
+                  onClick={() => creationState !== 'loading' && setRequirePassword(!requirePassword)}
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-xs sm:text-sm font-medium text-white">Room Password</span>
+                    <span className="text-[11px] text-slate-400">Optional additional protection for joining the room.</span>
+                  </div>
+                  <div
+                    className={`w-11 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
+                      requirePassword ? 'bg-[#6366F1]' : 'bg-[#161E2E]'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                        requirePassword ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </div>
+                </div>
 
-            {requirePassword && (
-              <div className="px-3 pb-2 animate-fade-in">
-                <input
-                  type="password"
-                  disabled={creationState === 'loading'}
-                  placeholder="Enter room password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#05070B] border border-white/15 rounded-xl px-4 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-primary"
-                />
-              </div>
+                {requirePassword && (
+                  <div className="px-3 pb-2 animate-fade-in">
+                    <input
+                      type="password"
+                      disabled={creationState === 'loading'}
+                      placeholder="Enter room password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-[#05070B] border border-white/15 rounded-xl px-4 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                )}
+
+                {/* Toggle: Allow Files */}
+                <div
+                  onClick={() => creationState !== 'loading' && setAllowFiles(!allowFiles)}
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-xs sm:text-sm font-medium text-white">Allow File Sharing</span>
+                    <span className="text-[11px] text-slate-400">Enable in-session file attachments.</span>
+                  </div>
+                  <div
+                    className={`w-11 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
+                      allowFiles ? 'bg-[#6366F1]' : 'bg-[#161E2E]'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                        allowFiles ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Toggle: Notify before expiration */}
+                <div
+                  onClick={() => creationState !== 'loading' && setNotifyExpiration(!notifyExpiration)}
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-xs sm:text-sm font-medium text-white">Expiration Warning</span>
+                    <span className="text-[11px] text-slate-400">Notice 1 minute before room expires.</span>
+                  </div>
+                  <div
+                    className={`w-11 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
+                      notifyExpiration ? 'bg-[#6366F1]' : 'bg-[#161E2E]'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                        notifyExpiration ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </section>
             )}
-
-            {/* Toggle: Allow Files */}
-            <div
-              onClick={() => creationState !== 'loading' && setAllowFiles(!allowFiles)}
-              className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5"
-            >
-              <div className="flex flex-col">
-                <span className="text-xs sm:text-sm font-medium text-white">Allow file sharing</span>
-                <span className="text-[11px] text-slate-400">Enable volatile RAM file transfer.</span>
-              </div>
-              <div
-                className={`w-11 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
-                  allowFiles ? 'bg-[#6366F1]' : 'bg-[#161E2E]'
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                    allowFiles ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </div>
-            </div>
-
-            {/* Toggle: Notify before expiration */}
-            <div
-              onClick={() => creationState !== 'loading' && setNotifyExpiration(!notifyExpiration)}
-              className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/5"
-            >
-              <div className="flex flex-col">
-                <span className="text-xs sm:text-sm font-medium text-white">Notify before expiration</span>
-                <span className="text-[11px] text-slate-400">Warning prompt 1 minute before destruction.</span>
-              </div>
-              <div
-                className={`w-11 h-6 rounded-full transition-colors relative flex items-center px-0.5 ${
-                  notifyExpiration ? 'bg-[#6366F1]' : 'bg-[#161E2E]'
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                    notifyExpiration ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </div>
-            </div>
-          </section>
+          </div>
 
           {/* Error Banner */}
           {errorMessage && (
