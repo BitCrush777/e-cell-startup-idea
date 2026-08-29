@@ -28,7 +28,7 @@ export default function Footer() {
             <Link href="/about" className="hover:text-primary-light transition-colors font-medium">
               About TempLink
             </Link>
-            <Link href="/#how-it-works" className="hover:text-slate-300 transition-colors">
+            <Link href="/how-it-works" className="hover:text-slate-300 transition-colors">
               How It Works
             </Link>
             <Link href="/security" className="hover:text-slate-300 transition-colors">
