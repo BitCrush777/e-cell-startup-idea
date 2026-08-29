@@ -9,6 +9,7 @@ import { extractRoomCode } from '@/lib/urls';
 import { BlurFade } from '@/components/magicui/BlurFade';
 import { BorderBeam } from '@/components/magicui/BorderBeam';
 import { trackProductEvent } from '@/lib/analytics';
+import { decodeQrFromImageElement } from '@/lib/qr-decoder';
 
 type ScanMode = 'camera' | 'upload';
 
@@ -39,6 +40,7 @@ export default function ScanPage() {
   const hasProcessedRef = useRef<boolean>(false);
   const isCleaningUpRef = useRef<boolean>(false);
   const activePreviewUrlRef = useRef<string | null>(null);
+  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clean up camera stream and video frame loops
   const stopCamera = useCallback(() => {
@@ -74,6 +76,13 @@ export default function ScanPage() {
     setPreviewImageUrl(null);
   }, []);
 
+  const clearProcessingTimeout = useCallback(() => {
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = null;
+    }
+  }, []);
+
   // Shared single success & extraction pipeline
   const handleQrPayload = useCallback(
     (rawPayload: string) => {
@@ -81,6 +90,8 @@ export default function ScanPage() {
       if (hasProcessedRef.current || isCleaningUpRef.current) {
         return;
       }
+
+      clearProcessingTimeout();
 
       const roomCode = extractRoomCode(rawPayload);
 
@@ -111,7 +122,7 @@ export default function ScanPage() {
         router.push(`/join?code=${encodeURIComponent(roomCode)}&scanned=1`);
       }, 400);
     },
-    [router, stopCamera, clearPreviewUrl, toast]
+    [router, stopCamera, clearPreviewUrl, clearProcessingTimeout, toast]
   );
 
   const startScanningLoop = useCallback(() => {
@@ -159,6 +170,7 @@ export default function ScanPage() {
     hasProcessedRef.current = false;
     isCleaningUpRef.current = false;
     clearPreviewUrl();
+    clearProcessingTimeout();
     setScannerState('initializing');
     setErrorMessage(null);
 
@@ -209,7 +221,7 @@ export default function ScanPage() {
         setErrorMessage('Camera is unavailable or in use by another application.');
       }
     }
-  }, [startScanningLoop, clearPreviewUrl]);
+  }, [startScanningLoop, clearPreviewUrl, clearProcessingTimeout]);
 
   // Mode change lifecycle
   useEffect(() => {
@@ -223,11 +235,12 @@ export default function ScanPage() {
     return () => {
       stopCamera();
       clearPreviewUrl();
+      clearProcessingTimeout();
     };
-  }, [scanMode, startCamera, stopCamera, clearPreviewUrl]);
+  }, [scanMode, startCamera, stopCamera, clearPreviewUrl, clearProcessingTimeout]);
 
   // Local, privacy-first QR decoding from client file (Zero server uploads)
-  const processQrImageFile = (file: File) => {
+  const processQrImageFile = async (file: File) => {
     // 1. File type validation
     if (!file || !file.type.startsWith('image/')) {
       setScannerState('error');
@@ -248,6 +261,7 @@ export default function ScanPage() {
     hasProcessedRef.current = false;
     setIsProcessingImage(true);
     setErrorMessage(null);
+    clearProcessingTimeout();
 
     // Create temporary local object URL for preview
     clearPreviewUrl();
@@ -255,93 +269,44 @@ export default function ScanPage() {
     activePreviewUrlRef.current = objectUrl;
     setPreviewImageUrl(objectUrl);
 
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (!ctx) {
-          setIsProcessingImage(false);
-          setScannerState('error');
-          setErrorMessage("We couldn't process this image. Please try another image.");
-          return;
-        }
+    // Strict safety timeout (4 seconds) so the UI can never hang indefinitely
+    processingTimeoutRef.current = setTimeout(() => {
+      setIsProcessingImage(false);
+      setScannerState('error');
+      setErrorMessage('Scanning timed out. Make sure the QR code is clearly visible and try again.');
+    }, 4000);
 
-        // Pass 1: Scaled decode for high-res mobile photos and screenshots (max 2048px)
-        const maxDimension = 1600;
-        let width = img.width;
-        let height = img.height;
+    try {
+      // Load image into HTMLImageElement
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = objectUrl;
+      });
 
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-        }
+      // Small async yield to allow preview to paint
+      await new Promise((r) => setTimeout(r, 40));
 
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
+      const result = await decodeQrFromImageElement(img);
 
-        let imageData = ctx.getImageData(0, 0, width, height);
-        let code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'attemptBoth',
-        });
+      clearProcessingTimeout();
+      setIsProcessingImage(false);
 
-        // Pass 2: Original native resolution if scaled pass missed
-        if (!code && (img.width !== width || img.height !== height)) {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0, img.width, img.height);
-          imageData = ctx.getImageData(0, 0, img.width, img.height);
-          code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'attemptBoth',
-          });
-        }
-
-        // Pass 3: Contrast & Grayscale preprocessing for dark/dim screenshots
-        if (!code) {
-          const d = imageData.data;
-          for (let i = 0; i < d.length; i += 4) {
-            const avg = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-            // High-contrast binarization threshold
-            const val = avg > 128 ? 255 : 0;
-            d[i] = val;
-            d[i + 1] = val;
-            d[i + 2] = val;
-          }
-          ctx.putImageData(imageData, 0, 0);
-          code = jsQR(d, imageData.width, imageData.height, {
-            inversionAttempts: 'attemptBoth',
-          });
-        }
-
-        if (code && code.data) {
-          handleQrPayload(code.data);
-        } else {
-          setIsProcessingImage(false);
-          setScannerState('error');
-          setErrorMessage('No QR code found. Choose an image with a clearly visible TempLink QR code.');
-          toast('No QR code found in image', 'error', 3500, 'qr-not-found');
-        }
-      } catch {
-        setIsProcessingImage(false);
+      if (result.success && result.data) {
+        handleQrPayload(result.data);
+      } else {
         setScannerState('error');
-        setErrorMessage("We couldn't process this image. Please try another image.");
+        setErrorMessage('No QR code found. Choose an image with a clearly visible TempLink QR code.');
+        toast('No QR code found in image', 'error', 3500, 'qr-not-found');
       }
-    };
-
-    img.onerror = () => {
+    } catch (err: any) {
+      clearProcessingTimeout();
       setIsProcessingImage(false);
       setScannerState('error');
       setErrorMessage("We couldn't process this image. Please try another image.");
-      toast('Unable to read image file', 'error');
-    };
-
-    img.src = objectUrl;
+      toast('Unable to process image', 'error');
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -380,6 +345,8 @@ export default function ScanPage() {
   };
 
   const handleRetryScan = () => {
+    clearProcessingTimeout();
+    setIsProcessingImage(false);
     if (scanMode === 'camera') {
       stopCamera();
       startCamera();
@@ -389,6 +356,14 @@ export default function ScanPage() {
       clearPreviewUrl();
       fileInputRef.current?.click();
     }
+  };
+
+  const handleCancelProcessing = () => {
+    clearProcessingTimeout();
+    setIsProcessingImage(false);
+    setScannerState('scanning');
+    setErrorMessage(null);
+    clearPreviewUrl();
   };
 
   return (
@@ -529,7 +504,7 @@ export default function ScanPage() {
               )}
             </div>
           ) : (
-            /* UPLOAD FROM GALLERY VIEWPORT (Fully Responsive for Mobile, Tablet, Desktop & PWA) */
+            /* UPLOAD FROM GALLERY VIEWPORT (Fully Responsive with Multi-Tier Decoder) */
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -537,7 +512,11 @@ export default function ScanPage() {
               }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                if (!isProcessingImage) {
+                  fileInputRef.current?.click();
+                }
+              }}
               className={`relative w-full aspect-square max-w-[320px] rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center p-6 text-center cursor-pointer overflow-hidden shadow-inner ${
                 isDragging
                   ? 'border-primary bg-primary/15 scale-[0.99] shadow-[0_0_25px_rgba(99,102,241,0.3)]'
@@ -554,10 +533,20 @@ export default function ScanPage() {
               )}
 
               {isProcessingImage ? (
-                <div className="relative z-10 flex flex-col items-center gap-3 bg-black/70 p-4 rounded-2xl backdrop-blur-sm">
+                <div className="relative z-10 flex flex-col items-center gap-3 bg-black/80 p-5 rounded-2xl backdrop-blur-sm shadow-xl">
                   <div className="w-9 h-9 rounded-full border-2 border-primary border-t-transparent animate-spin motion-reduce:animate-none" />
                   <span className="text-xs font-bold text-white">Scanning image...</span>
                   <span className="text-[11px] text-slate-300">Processing locally in your browser</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCancelProcessing();
+                    }}
+                    className="mt-1 text-[11px] text-slate-400 hover:text-white underline"
+                  >
+                    Cancel
+                  </button>
                 </div>
               ) : scannerState === 'detected' ? (
                 <div className="relative z-10 flex flex-col items-center gap-3 bg-black/80 p-4 rounded-2xl backdrop-blur-sm animate-fade-in">
