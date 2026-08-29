@@ -83,7 +83,7 @@ export class RealtimeClient {
           this.notifyListeners({
             type: 'room_expired',
             roomCode: this.roomCode,
-            reason: 'Room has expired and was zeroized.',
+            reason: 'This temporary conversation has ended.',
           });
           return;
         }

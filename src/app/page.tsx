@@ -30,18 +30,18 @@ export default function HomePage() {
         <BlurFade delay={0.1}>
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0D111A] border border-white/10 text-xs font-semibold mb-6 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-300">Volatile Ephemeral Protocol</span>
+            <span className="text-slate-300">Temporary Communication</span>
             <span className="text-slate-500">•</span>
-            <span className="text-primary-light font-mono">Zero Server Logs</span>
+            <span className="text-primary-light font-mono">No Account Required</span>
           </div>
         </BlurFade>
 
         {/* Hero Headline */}
         <BlurFade delay={0.2}>
           <h1 className="font-display text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white max-w-4xl leading-[1.1] mb-6">
-            Private conversations. <br className="hidden sm:inline" />
+            Temporary communication <br className="hidden sm:inline" />
             <span className="bg-gradient-to-r from-white via-slate-200 to-primary-light bg-clip-text text-transparent">
-              Temporary by design.
+              without the permanent connection.
             </span>
           </h1>
         </BlurFade>
@@ -49,7 +49,7 @@ export default function HomePage() {
         {/* Subtitle */}
         <BlurFade delay={0.3}>
           <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl font-normal leading-relaxed mb-10">
-            Create disposable 1-on-1 encrypted channels that automatically self-destruct. No phone numbers, no account logins, and zero permanent server trace.
+            Create a temporary private room, share a QR code or room code, communicate in real time, and let the room expire when the conversation is over.
           </p>
         </BlurFade>
 
@@ -67,7 +67,7 @@ export default function HomePage() {
               className="btn-ghost w-full sm:w-auto px-7 py-3.5 text-xs font-semibold flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-[18px]">vpn_key</span>
-              <span>Join with Room Code</span>
+              <span>Join a Room</span>
             </Link>
           </div>
         </BlurFade>
@@ -83,7 +83,7 @@ export default function HomePage() {
               <div className="w-14 h-14 rounded-2xl bg-[#101621] border border-white/15 flex items-center justify-center shadow-lg text-primary-light">
                 <span className="material-symbols-outlined text-[26px]">person</span>
               </div>
-              <span className="text-xs font-bold text-white">Peer A (Creator)</span>
+              <span className="text-xs font-bold text-white">Member A (Creator)</span>
               <span className="text-[10px] text-emerald-400 font-mono">Connected</span>
             </div>
 
@@ -97,11 +97,11 @@ export default function HomePage() {
                 <span className="font-mono text-sm font-bold text-white tracking-widest">A7X9-K2P4</span>
               </div>
               <div className="flex items-center gap-2 text-[11px] font-mono">
-                <span className="text-slate-400">TTL:</span>
+                <span className="text-slate-400">Expires in:</span>
                 <span className="text-amber-300 font-bold">29:42</span>
               </div>
               <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">
-                RAM Ephemeral Channel
+                Temporary Room Session
               </span>
             </div>
 
@@ -110,7 +110,7 @@ export default function HomePage() {
               <div className="w-14 h-14 rounded-2xl bg-[#101621] border border-white/15 flex items-center justify-center shadow-lg text-primary-light">
                 <span className="material-symbols-outlined text-[26px]">person_add</span>
               </div>
-              <span className="text-xs font-bold text-white">Peer B (Member)</span>
+              <span className="text-xs font-bold text-white">Member B (Participant)</span>
               <span className="text-[10px] text-emerald-400 font-mono">Connected</span>
             </div>
 
@@ -170,7 +170,7 @@ export default function HomePage() {
               {/* System Notice */}
               <div className="flex justify-center">
                 <span className="text-[11px] font-mono text-slate-500 bg-[#0D111A]/80 px-3 py-1 rounded-full border border-white/5">
-                  Ephemeral channel established • Zeroize in 29m 42s
+                  Temporary room active • Expires in 29m 42s
                 </span>
               </div>
 
@@ -182,7 +182,7 @@ export default function HomePage() {
                 <div className="flex flex-col gap-1">
                   <span className="text-[10px] text-slate-400 font-medium ml-1">Alex • 11:42 PM</span>
                   <div className="bg-[#0D111A] border border-white/10 rounded-2xl rounded-tl-sm px-4 py-2.5 text-xs sm:text-sm text-slate-200 shadow-sm">
-                    Sending the confidential financial audit. Will this auto-delete?
+                    Sending the project update report. Will this room expire?
                   </div>
                 </div>
               </div>
@@ -195,7 +195,7 @@ export default function HomePage() {
                 <div className="flex flex-col items-end gap-1">
                   <span className="text-[10px] text-slate-400 font-medium mr-1">You • 11:42 PM</span>
                   <div className="bg-primary text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-xs sm:text-sm shadow-md">
-                    Yes. Both the messages and the attached files live only in volatile server memory. Nothing is written to disk.
+                    Yes. The room runs in memory and expires automatically when the timer reaches 0:00.
                   </div>
                 </div>
               </div>
@@ -212,8 +212,8 @@ export default function HomePage() {
                       <span className="material-symbols-outlined text-[20px]">description</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-slate-200">audit_q3_report.pdf</span>
-                      <span className="text-[10px] text-slate-500 font-mono">1.8 MB • Encrypted RAM</span>
+                      <span className="text-xs font-semibold text-slate-200">project_brief.pdf</span>
+                      <span className="text-[10px] text-slate-500 font-mono">1.8 MB • Active Session</span>
                     </div>
                   </div>
                 </div>
@@ -223,7 +223,7 @@ export default function HomePage() {
             {/* Mockup Composer */}
             <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-2">
               <div className="flex-1 bg-[#05070B] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-slate-400 flex items-center justify-between">
-                <span>Type a self-destructing message...</span>
+                <span>Type a message...</span>
                 <div className="flex items-center gap-2 text-slate-500">
                   <span className="material-symbols-outlined text-[16px]">attach_file</span>
                   <span className="material-symbols-outlined text-[16px]">mood</span>
@@ -244,10 +244,10 @@ export default function HomePage() {
       <section id="how-it-works" className="py-20 px-4 md:px-8 max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <span className="text-xs font-semibold text-primary-light uppercase tracking-widest block mb-2">
-            Architected for Absolute Secrecy
+            Designed for Privacy & Simplicity
           </span>
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">
-            How TempLink Protects You
+            How TempLink Works
           </h2>
         </div>
 
@@ -259,14 +259,14 @@ export default function HomePage() {
                 <div className="w-12 h-12 rounded-2xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-6 group-hover:scale-105 transition-transform">
                   <span className="material-symbols-outlined text-[24px]">memory</span>
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">Zero-Disk Volatile Memory</h3>
+                <h3 className="text-lg font-bold text-white mb-2">In-Memory Temporary Rooms</h3>
                 <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                  All messages and attachments reside exclusively in volatile Cloudflare Durable Object RAM. Nothing touches a database disk.
+                  Active conversation state is held in temporary Cloudflare Durable Object memory and is not stored in a persistent message database.
                 </p>
               </div>
               <div className="mt-8 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-slate-500">
-                <span>RAM-Only State</span>
-                <span className="font-mono text-emerald-400">Active</span>
+                <span>Session State</span>
+                <span className="font-mono text-emerald-400">In-Memory</span>
               </div>
             </div>
           </BlurFade>
@@ -278,13 +278,13 @@ export default function HomePage() {
                 <div className="w-12 h-12 rounded-2xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-6 group-hover:scale-105 transition-transform">
                   <span className="material-symbols-outlined text-[24px]">timer_off</span>
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">Authoritative Edge TTL</h3>
+                <h3 className="text-lg font-bold text-white mb-2">Automatic Room Expiration</h3>
                 <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                  A server-level countdown timer runs continuously. When 0:00 is reached, all session states and crypto keys are permanently zeroized.
+                  Every room has a configured lifetime. When the timer reaches 0:00, the session ends and the room becomes permanently unavailable.
                 </p>
               </div>
               <div className="mt-8 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-slate-500">
-                <span>Auto-Destruct Alarm</span>
+                <span>Expiration Timer</span>
                 <span className="font-mono text-emerald-400">Deterministic</span>
               </div>
             </div>
@@ -297,14 +297,14 @@ export default function HomePage() {
                 <div className="w-12 h-12 rounded-2xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-6 group-hover:scale-105 transition-transform">
                   <span className="material-symbols-outlined text-[24px]">qr_code_2</span>
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">One-Time Dynamic QR Pairing</h3>
+                <h3 className="text-lg font-bold text-white mb-2">QR & Room Code Access</h3>
                 <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                  Seamless peer pairing with dynamic QR codes. Point a smartphone camera to connect instantly without installing apps or sharing numbers.
+                  Join temporary rooms in seconds using a room code or QR code scan—no phone number or account required for basic access.
                 </p>
               </div>
               <div className="mt-8 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-slate-500">
-                <span>P2P QR Onboarding</span>
-                <span className="font-mono text-emerald-400">Zero-Friction</span>
+                <span>Room Onboarding</span>
+                <span className="font-mono text-emerald-400">Account-Free</span>
               </div>
             </div>
           </BlurFade>
@@ -315,10 +315,10 @@ export default function HomePage() {
       <section id="use-cases" className="py-16 px-4 md:px-8 max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <span className="text-xs font-semibold text-primary-light uppercase tracking-widest block mb-2">
-            Engineered for Ephemeral Workflows
+            Built for Short-Term Communication
           </span>
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">
-            Built For Pure Confidentiality
+            Create. Connect. Communicate. Disappear.
           </h2>
         </div>
 
@@ -326,11 +326,11 @@ export default function HomePage() {
           <BlurFade delay={0.1}>
             <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80">
               <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
-                <span className="material-symbols-outlined text-[20px]">verified_user</span>
+                <span className="material-symbols-outlined text-[20px]">school</span>
               </div>
-              <h3 className="text-base font-bold text-white mb-1.5">Journalism & Whistleblowing</h3>
+              <h3 className="text-base font-bold text-white mb-1.5">Student & Team Collaboration</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Connect with sensitive sources without exchanging phone numbers, email addresses, or persistent metadata.
+                Coordinate study groups, hackathons, and short-term projects without exchanging personal phone numbers or cluttering permanent chat apps.
               </p>
             </div>
           </BlurFade>
@@ -338,11 +338,11 @@ export default function HomePage() {
           <BlurFade delay={0.2}>
             <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80">
               <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
-                <span className="material-symbols-outlined text-[20px]">vpn_key</span>
+                <span className="material-symbols-outlined text-[20px]">work</span>
               </div>
-              <h3 className="text-base font-bold text-white mb-1.5">Credential & Key Sharing</h3>
+              <h3 className="text-base font-bold text-white mb-1.5">Freelance & Client Consultations</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Send one-time API keys, recovery phrases, or environment variables that erase from memory the moment the timer ends.
+                Discuss requirements, share project files, and review drafts with clients in temporary sessions that close when work is complete.
               </p>
             </div>
           </BlurFade>
@@ -350,11 +350,11 @@ export default function HomePage() {
           <BlurFade delay={0.3}>
             <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80">
               <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
-                <span className="material-symbols-outlined text-[20px]">business_center</span>
+                <span className="material-symbols-outlined text-[20px]">handshake</span>
               </div>
-              <h3 className="text-base font-bold text-white mb-1.5">Legal & Advisory Consultations</h3>
+              <h3 className="text-base font-bold text-white mb-1.5">Marketplace & Event Communication</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Review contracts, NDA drafts, and sensitive advisory documents in real time without leaving a permanent trail.
+                Coordinate one-time transactions, event meetups, or local exchanges with time-limited rooms without sharing personal contacts.
               </p>
             </div>
           </BlurFade>
@@ -367,22 +367,22 @@ export default function HomePage() {
           <div className="glass-panel p-8 sm:p-12 rounded-3xl border border-white/10 relative overflow-hidden bg-gradient-to-b from-[#0D111A] to-[#080B12] shadow-2xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mb-3">
-              Ready for true conversation privacy?
+              Ready for temporary communication?
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto mb-8">
-              Create your first ephemeral room in seconds. No signup required.
+              Create your first temporary private room in seconds. No signup required for basic rooms.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/create">
                 <ShimmerButton className="px-8 py-3.5 text-xs font-bold uppercase tracking-wider">
-                  Launch Private Room
+                  Create Private Room
                 </ShimmerButton>
               </Link>
               <Link
                 href="/join"
                 className="btn-ghost px-7 py-3.5 text-xs font-semibold"
               >
-                Enter Code
+                Join a Room
               </Link>
             </div>
           </div>

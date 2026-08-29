@@ -9,10 +9,10 @@ import { AuthProvider } from '@/components/AuthProvider';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://templink.in'),
-  title: 'TempLink — Ephemeral Privacy Platform',
-  description: 'Private conversations. Temporary by design. Connect with anyone without phone numbers, accounts, or permanent traces.',
+  title: 'TempLink — Temporary communication without the permanent connection.',
+  description: 'Create a temporary private room, share a QR code or room code, communicate in real time, and let the room expire when the conversation is over.',
   applicationName: 'TempLink',
-  authors: [{ name: 'TempLink Privacy Systems' }],
+  authors: [{ name: 'TempLink Team' }],
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -32,22 +32,22 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: 'https://templink.in',
-    title: 'TempLink — Private conversations. Temporary by design.',
-    description: 'Disposable temporary private rooms that vaporize on expiration. Zero permanent digital footprint.',
+    title: 'TempLink — Temporary communication without the permanent connection.',
+    description: 'Create a temporary private room, share a QR code or room code, communicate in real time, and let the room expire when the conversation is over.',
     siteName: 'TempLink',
     images: [
       {
         url: '/icons/icon-512.png',
         width: 512,
         height: 512,
-        alt: 'TempLink Security Platform',
+        alt: 'TempLink Platform',
       },
     ],
   },
   twitter: {
     card: 'summary',
-    title: 'TempLink — Private conversations. Temporary by design.',
-    description: 'Disposable temporary private rooms with zero permanent server trace.',
+    title: 'TempLink — Temporary communication without the permanent connection.',
+    description: 'Create a temporary private room, share a QR code or room code, communicate in real time, and let the room expire when the conversation is over.',
     images: ['/icons/icon-512.png'],
   },
 };

@@ -54,7 +54,7 @@ export default function FileShareModal({ isOpen, onClose, onSendFile }: FileShar
       setSelectedFile(null);
       setPreviewUrl(null);
       onClose();
-      toast('Encrypted file transferred to room memory!', 'success');
+      toast('File shared in room session!', 'success');
     };
     reader.readAsDataURL(selectedFile);
   };

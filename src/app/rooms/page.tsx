@@ -112,10 +112,9 @@ export default function RoomsHistoryPage() {
               <span className="material-symbols-outlined text-4xl text-emerald-400">
                 lock_reset
               </span>
-              <h4 className="font-bold text-base text-white">Zero Data Retention Policy</h4>
+              <h4 className="font-bold text-base text-white">Temporary Session Policy</h4>
               <p className="text-xs text-slate-400 max-w-md">
-                In strict adherence to TempLink's zero-knowledge model, previous conversation
-                logs, participants, and session records are immediately purged from RAM upon expiration.
+                In adherence to TempLink&apos;s data minimization principles, expired rooms and conversation messages are not archived in a persistent chat database.
               </p>
             </div>
           )}

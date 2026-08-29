@@ -93,13 +93,13 @@ export default function AboutPage() {
                 <span className="material-symbols-outlined text-[22px]">group</span>
               </div>
               <span className="text-xs font-bold text-white">People</span>
-              <span className="text-[10px] text-slate-400">Zero Signup</span>
+              <span className="text-[10px] text-slate-400">Account-Free</span>
             </div>
 
             <div className="hidden sm:flex items-center flex-1 justify-center relative px-4">
               <div className="w-full h-0.5 bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
               <div className="absolute px-3 py-1 bg-[#0D111A] border border-primary/40 rounded-full text-[10px] font-mono text-primary-light">
-                Volatile WebSocket Relay
+                Secure WebSocket Relay
               </div>
             </div>
 
@@ -108,13 +108,13 @@ export default function AboutPage() {
                 <span className="material-symbols-outlined text-[22px]">vpn_key</span>
               </div>
               <span className="text-xs font-bold text-white">Temporary Room</span>
-              <span className="text-[10px] text-emerald-400 font-mono">RAM-Only TTL</span>
+              <span className="text-[10px] text-emerald-400 font-mono">Configured TTL</span>
             </div>
 
             <div className="hidden sm:flex items-center flex-1 justify-center relative px-4">
               <div className="w-full h-0.5 bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
               <div className="absolute px-3 py-1 bg-[#0D111A] border border-primary/40 rounded-full text-[10px] font-mono text-primary-light">
-                Auto-Destruct
+                Auto-Expiration
               </div>
             </div>
 
@@ -123,7 +123,7 @@ export default function AboutPage() {
                 <span className="material-symbols-outlined text-[22px]">auto_delete</span>
               </div>
               <span className="text-xs font-bold text-white">Disappear</span>
-              <span className="text-[10px] text-slate-400">Zero Traces</span>
+              <span className="text-[10px] text-slate-400">Data Minimization</span>
             </div>
           </div>
         </BlurFade>
@@ -203,11 +203,11 @@ export default function AboutPage() {
                   </div>
                   <h3 className="text-lg font-bold text-white mb-2">Disappear</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    When the session ends, the temporary room expires. All message payloads and participant states are zeroized from memory.
+                    When the session ends, the temporary room expires and becomes unavailable for further communication.
                   </p>
                 </div>
                 <div className="mt-6 pt-3 border-t border-white/5 text-[11px] font-mono text-amber-300">
-                  Volatile Expiration
+                  Automatic Expiration
                 </div>
               </div>
             </BlurFade>

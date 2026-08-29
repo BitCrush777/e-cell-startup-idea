@@ -168,7 +168,7 @@ export default function CreateRoomPage() {
       try {
         await navigator.share({
           title: `Join TempLink Room ${createdRoom.roomCode}`,
-          text: `Join my private encrypted TempLink room: ${createdRoom.roomCode}`,
+          text: `Join my private TempLink room: ${createdRoom.roomCode}`,
           url: createdRoom.joinUrl,
         });
       } catch {}
@@ -303,7 +303,7 @@ export default function CreateRoomPage() {
         <header className="mb-6 text-center">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0D111A] border border-white/10 text-primary-light text-xs font-semibold mb-2">
             <span className="material-symbols-outlined text-[15px]">lock</span>
-            Encrypted Session Config
+            Temporary Session Config
           </div>
           <h1 className="font-display text-3xl sm:text-4xl font-bold text-white mb-1">
             Create a Private Room

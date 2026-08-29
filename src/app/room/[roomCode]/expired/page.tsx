@@ -42,9 +42,9 @@ export default function ExpiredRoomPage() {
             </span>
           </div>
           <div className="space-y-2">
-            <h2 className="font-display text-2xl font-bold text-white">Purging Ephemeral Memory</h2>
+            <h2 className="font-display text-2xl font-bold text-white">Closing Temporary Room</h2>
             <p className="text-xs text-slate-400 font-mono tracking-wider">
-              Zeroizing cryptographic vectors for room {roomCode}...
+              Cleaning temporary session state for room {roomCode}...
             </p>
           </div>
         </div>
@@ -54,7 +54,7 @@ export default function ExpiredRoomPage() {
           <div className="w-full bg-[#080B12]/80 border border-white/10 rounded-2xl p-4 flex items-center justify-between text-xs backdrop-blur-md">
             <span className="text-slate-300 flex items-center gap-2 font-medium">
               <span className="material-symbols-outlined text-[16px] text-emerald-400">check_circle</span>
-              Room <span className="font-mono text-white">{roomCode}</span> ended • Memory zeroized
+              Room <span className="font-mono text-white">{roomCode}</span> expired • Session ended
             </span>
             <button
               onClick={() => router.push('/')}
@@ -81,21 +81,20 @@ export default function ExpiredRoomPage() {
               Room {roomCode}
             </span>
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-white">
-              Private room ended
+              Room expired
             </h2>
           </div>
 
           <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-            The timer reached 0:00 or the session was terminated. Cryptographic memory buffers have been
-            permanently destroyed and all messages have zeroized.
+            The configured room lifetime has ended. This temporary room is no longer active and messages are no longer available.
           </p>
 
           <div className="w-full bg-[#05070B] rounded-2xl p-3.5 border border-white/10 flex items-center justify-between shadow-inner">
             <span className="text-xs text-slate-300 flex items-center gap-2 font-medium">
               <span className="material-symbols-outlined text-[16px] text-emerald-400">check_circle</span>
-              RAM Zeroized Successfully
+              Temporary Room Closed
             </span>
-            <span className="font-mono text-xs font-bold text-primary-light">100%</span>
+            <span className="font-mono text-xs font-bold text-primary-light">Expired</span>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full pt-2">

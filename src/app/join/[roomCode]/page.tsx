@@ -191,7 +191,7 @@ export default function JoinByRoomCodePage() {
             Join Room {roomCode}
           </h1>
           <p className="text-xs sm:text-sm text-slate-400">
-            Ephemeral temporary chat with zero stored history.
+            Temporary private room with automatic expiration.
           </p>
         </header>
 

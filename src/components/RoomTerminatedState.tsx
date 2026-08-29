@@ -35,10 +35,10 @@ export function RoomTerminatedState({ roomCode, reason }: RoomTerminatedStatePro
         {/* Content */}
         <div className="p-4 rounded-2xl bg-[#0D111A] border border-white/10 text-xs text-slate-300 leading-relaxed flex flex-col gap-2 text-left">
           <p className="font-semibold text-slate-200">
-            {reason || "This temporary room was closed because the conversation repeatedly violated TempLink's conversation guidelines."}
+            {reason || "This room was closed because of repeated violations of the conversation guidelines."}
           </p>
           <p className="text-slate-400">
-            Temporary rooms are designed to remain respectful and useful for everyone. When repeated severe violations occur, the entire session is zeroized to protect all participants.
+            Temporary rooms are designed to remain respectful and useful for everyone. When repeated severe violations occur, the room is automatically closed for all participants.
           </p>
         </div>
 

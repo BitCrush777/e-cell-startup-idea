@@ -84,7 +84,7 @@ function JoinRoomContent() {
       setValidatedRoom(null);
       if (result.status === 'expired') {
         setValidationState('expired');
-        setErrorMessage('This room has expired and was erased.');
+        setErrorMessage('This temporary conversation has ended.');
       } else if (result.status === 'terminated' || result.code === 'ROOM_TERMINATED') {
         setValidationState('invalid');
         setErrorMessage("This room was closed because of repeated violations of the conversation guidelines.");

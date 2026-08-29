@@ -21,7 +21,7 @@ export default function Footer() {
               TempLink
             </Link>
             <span className="hidden sm:inline text-slate-700">•</span>
-            <span className="text-slate-400">Connect. Communicate. Disappear.</span>
+            <span className="text-slate-400">Create. Connect. Communicate. Disappear.</span>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-6 text-xs">
@@ -38,7 +38,7 @@ export default function Footer() {
               Pricing
             </Link>
             <Link href="/business" className="hover:text-slate-300 transition-colors">
-              Enterprise
+              Business
             </Link>
             <Link href="/security#privacy" className="hover:text-slate-300 transition-colors">
               Privacy
@@ -51,7 +51,7 @@ export default function Footer() {
 
         <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
           <div>
-            © {new Date().getFullYear()} TempLink Systems. Ephemeral privacy platform.
+            © {new Date().getFullYear()} TempLink. Temporary private communication platform.
           </div>
           <div className="text-slate-400 font-medium">
             Designed &amp; Developed by <span className="text-slate-200 font-semibold">Sai Darshan.k</span> • <span className="text-slate-400">Built with the TempLink team</span>

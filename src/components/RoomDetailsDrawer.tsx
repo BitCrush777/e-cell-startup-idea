@@ -28,7 +28,7 @@ export default function RoomDetailsDrawer({
     room.joinUrl ||
     (typeof window !== 'undefined'
       ? `${window.location.origin}/join/${room.roomCode}`
-      : `https://templink.app/join/${room.roomCode}`);
+      : `https://templink.in/join/${room.roomCode}`);
 
   const copyCode = () => {
     navigator.clipboard.writeText(room.roomCode);

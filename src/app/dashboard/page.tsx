@@ -47,7 +47,7 @@ export default function DashboardPage() {
                   Manage Private Conversations
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                  Secure, ephemeral channels that vanish on expiration. Zero permanent traces, RAM-only execution.
+                  Temporary private rooms that expire automatically. Built for short-term communication.
                 </p>
               </div>
 
@@ -85,9 +85,9 @@ export default function DashboardPage() {
               <div className="bg-[#080B12] border border-white/10 rounded-2xl p-5 flex flex-col gap-1 shadow-sm">
                 <span className="material-symbols-outlined text-emerald-400 text-[24px]">verified</span>
                 <span className="text-[11px] font-semibold uppercase text-slate-400 tracking-wider mt-1">
-                  Zero Log Status
+                  Data Policy
                 </span>
-                <span className="font-display text-2xl font-bold text-emerald-400">100% Active</span>
+                <span className="font-display text-2xl font-bold text-emerald-400">In-Memory TTL</span>
               </div>
               <div className="bg-[#080B12] border border-white/10 rounded-2xl p-5 flex flex-col gap-1 shadow-sm">
                 <span className="material-symbols-outlined text-primary-light text-[24px]">fingerprint</span>

@@ -497,13 +497,13 @@ export default function PricingPage() {
         </div>
       </BlurFade>
 
-      {/* 7. Zero Data Monetization Guarantee Note */}
+      {/* 7. Privacy & Monetization Commitment Note */}
       <BlurFade delay={0.8}>
         <div className="glass-panel p-6 rounded-2xl border border-white/10 text-center max-w-2xl mx-auto flex flex-col items-center gap-2 bg-[#080B12]/80">
           <span className="material-symbols-outlined text-emerald-400 text-2xl">verified_user</span>
-          <h4 className="font-bold text-sm text-white">Zero Data Monetization Guarantee</h4>
+          <h4 className="font-bold text-sm text-white">No Data Monetization</h4>
           <p className="text-xs text-slate-400">
-            TempLink is funded exclusively through direct software subscriptions. We never sell telemetry, serve ads, or retain contact logs.
+            TempLink is funded through direct software subscriptions. We do not sell user data, serve advertisements, or monetize conversation telemetry.
           </p>
         </div>
       </BlurFade>

@@ -18,7 +18,7 @@ export default function QrModal({ isOpen, onClose, roomCode }: QrModalProps) {
 
   const joinUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/join?code=${roomCode}`
-    : `https://templink.app/join?code=${roomCode}`;
+    : `https://templink.in/join?code=${roomCode}`;
 
   const copyLink = async () => {
     try {
