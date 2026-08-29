@@ -48,6 +48,8 @@ export default {
         const creatorParticipantId = body.creatorParticipantId || 'p_' + crypto.randomUUID().substring(0, 8);
         const passwordProtected = Boolean(body.passwordProtected || body.requirePassword);
         const password = body.password || '';
+        const plan = (body.plan || 'FREE').toUpperCase();
+        const maxMembers = Number(body.maxMembers || body.maxParticipants) || (plan === 'PRO' ? 10 : plan === 'BUSINESS' ? 25 : 3);
 
         // Collision Protection: retry up to 5 times to ensure guaranteed uniqueness
         let roomCode = '';
@@ -105,6 +107,9 @@ export default {
             roomCode,
             joinUrl,
             durationMinutes,
+            plan,
+            maxMembers,
+            maxParticipants: maxMembers,
             creatorParticipantId,
             creatorName,
             passwordProtected,
@@ -131,7 +136,7 @@ export default {
                 createdRoom.createdAt,
                 createdRoom.expiresAt,
                 durationMinutes,
-                2,
+                maxMembers,
                 'waiting',
                 creatorParticipantId
               )
@@ -142,7 +147,7 @@ export default {
         }
 
         if (process.env.NODE_ENV !== 'production') {
-          console.log(`[ROOM CREATED] roomCode=${roomCode}, joinUrl=${joinUrl}`);
+          console.log(`[ROOM CREATED] roomCode=${roomCode}, joinUrl=${joinUrl}, maxMembers=${maxMembers}`);
         }
 
         return new Response(JSON.stringify({
@@ -171,6 +176,16 @@ export default {
         // WebSocket Upgrade: /api/rooms/:code/ws
         if (subPath === '/ws' || request.headers.get('Upgrade') === 'websocket') {
           return stub.fetch(request);
+        }
+
+        // Validate: GET /api/rooms/:code/validate
+        if (subPath === '/validate' && request.method === 'GET') {
+          const valRes = await stub.fetch('http://do/validate', { method: 'GET' });
+          const valData = await valRes.json();
+          return new Response(JSON.stringify(valData), {
+            status: valRes.status,
+            headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+          });
         }
 
         // Join: POST /api/rooms/:code/join or POST /api/rooms/:code

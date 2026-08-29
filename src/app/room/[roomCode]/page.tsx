@@ -493,7 +493,7 @@ export default function RoomChatPage() {
                 <div className="bg-[#0D111A]/90 border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-2 backdrop-blur-md shadow-sm">
                   <span className="material-symbols-outlined text-[15px] text-primary-light">visibility_off</span>
                   <span className="text-[11px] font-medium text-slate-400">
-                    Ephemeral session • Volatile RAM memory only
+                    Temporary private room • SafeRoom active
                   </span>
                 </div>
               </div>
