@@ -18,7 +18,7 @@ export default function QrCode({
   className = '',
   bgColor = '#ffffff',
   fgColor = '#05070B',
-  level = 'H',
+  level = 'M',
 }: QrCodeProps) {
   if (!value) {
     return (
@@ -33,7 +33,7 @@ export default function QrCode({
 
   return (
     <div
-      className={`bg-white p-3.5 sm:p-4 rounded-2xl shadow-xl border border-white/20 flex items-center justify-center transition-all ${className}`}
+      className={`bg-white p-3 sm:p-3.5 rounded-2xl shadow-xl border border-white/20 flex items-center justify-center transition-all ${className}`}
     >
       <QRCodeSVG
         key={value}
@@ -42,7 +42,7 @@ export default function QrCode({
         bgColor={bgColor}
         fgColor={fgColor}
         level={level}
-        includeMargin={false}
+        includeMargin={true}
       />
     </div>
   );

@@ -110,8 +110,8 @@ export default function RoomDetailsDrawer({
               Invite Code
             </h4>
             <div className="bg-[#122131]/60 border border-white/10 rounded-xl p-4 flex flex-col items-center gap-3.5">
-              <div className="w-28 h-28 bg-white rounded-lg p-2 flex items-center justify-center shadow-md">
-                <QRCodeSVG value={actualJoinUrl} size={96} />
+              <div className="w-28 h-28 bg-white rounded-lg p-1.5 flex items-center justify-center shadow-md">
+                <QRCodeSVG value={actualJoinUrl} size={96} level="M" includeMargin={true} />
               </div>
               <div
                 onClick={copyCode}

@@ -41,6 +41,18 @@ export default function ScanPage() {
   const isCleaningUpRef = useRef<boolean>(false);
   const activePreviewUrlRef = useRef<string | null>(null);
   const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const barcodeDetectorRef = useRef<any>(null);
+
+  // Initialize native BarcodeDetector if supported
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+      try {
+        barcodeDetectorRef.current = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+      } catch {
+        barcodeDetectorRef.current = null;
+      }
+    }
+  }, []);
 
   // Clean up camera stream and video frame loops
   const stopCamera = useCallback(() => {
@@ -120,7 +132,7 @@ export default function ScanPage() {
       setTimeout(() => {
         clearPreviewUrl();
         router.push(`/join?code=${encodeURIComponent(roomCode)}&scanned=1`);
-      }, 400);
+      }, 350);
     },
     [router, stopCamera, clearPreviewUrl, clearProcessingTimeout, toast]
   );
@@ -136,25 +148,51 @@ export default function ScanPage() {
     }
     const ctx = offscreenCanvas.getContext('2d', { willReadFrequently: true });
 
-    const scanFrame = () => {
+    let isScanningFrame = false;
+
+    const scanFrame = async () => {
       if (hasProcessedRef.current || isCleaningUpRef.current || scanMode !== 'camera') {
         return;
       }
 
-      if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
-        offscreenCanvas!.width = video.videoWidth;
-        offscreenCanvas!.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, offscreenCanvas!.width, offscreenCanvas!.height);
+      if (video.readyState === video.HAVE_ENOUGH_DATA && !isScanningFrame) {
+        isScanningFrame = true;
 
-        const imageData = ctx.getImageData(0, 0, offscreenCanvas!.width, offscreenCanvas!.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert',
-        });
-
-        if (code && code.data && !hasProcessedRef.current) {
-          handleQrPayload(code.data);
-          return;
+        // Tier 1: Hardware-Accelerated Native BarcodeDetector on video element
+        if (barcodeDetectorRef.current) {
+          try {
+            const barcodes = await barcodeDetectorRef.current.detect(video);
+            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue && !hasProcessedRef.current) {
+              handleQrPayload(barcodes[0].rawValue);
+              return;
+            }
+          } catch {}
         }
+
+        // Tier 2: Downscaled Canvas + jsQR Fallback (Max 640px for 60fps performance)
+        if (ctx && !hasProcessedRef.current) {
+          const vw = video.videoWidth || 640;
+          const vh = video.videoHeight || 480;
+          const scale = Math.min(1, 640 / Math.max(vw, vh));
+          const cw = Math.round(vw * scale);
+          const ch = Math.round(vh * scale);
+
+          offscreenCanvas!.width = cw;
+          offscreenCanvas!.height = ch;
+          ctx.drawImage(video, 0, 0, cw, ch);
+
+          const imageData = ctx.getImageData(0, 0, cw, ch);
+          const code = jsQR(imageData.data, cw, ch, {
+            inversionAttempts: 'attemptBoth',
+          });
+
+          if (code && code.data && !hasProcessedRef.current) {
+            handleQrPayload(code.data);
+            return;
+          }
+        }
+
+        isScanningFrame = false;
       }
 
       if (!hasProcessedRef.current && !isCleaningUpRef.current) {
@@ -269,7 +307,7 @@ export default function ScanPage() {
     activePreviewUrlRef.current = objectUrl;
     setPreviewImageUrl(objectUrl);
 
-    // Strict safety timeout (4 seconds) so the UI can never hang indefinitely
+    // Strict safety timeout (4 seconds)
     processingTimeoutRef.current = setTimeout(() => {
       setIsProcessingImage(false);
       setScannerState('error');
@@ -314,7 +352,6 @@ export default function ScanPage() {
     if (file) {
       processQrImageFile(file);
     }
-    // Reset file input value so re-selecting same file triggers onChange
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }

@@ -77,14 +77,14 @@ export default function QrModal({ isOpen, onClose, roomCode }: QrModalProps) {
         </div>
 
         {/* High-contrast QR Container */}
-        <div className="bg-white p-4 rounded-xl shadow-lg border border-white/20 flex items-center justify-center">
+        <div className="bg-white p-3.5 rounded-2xl shadow-lg border border-white/20 flex items-center justify-center">
           <QRCodeSVG
             value={joinUrl}
             size={180}
             bgColor="#ffffff"
             fgColor="#051424"
-            level="H"
-            includeMargin={false}
+            level="M"
+            includeMargin={true}
           />
         </div>
 
