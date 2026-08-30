@@ -70,13 +70,16 @@ export function parseQrContent(rawContent: string): ParsedQrResult {
       const url = new URL(trimmed);
       const hostname = url.hostname.toLowerCase();
 
-      // Only allow legitimate templink domains, localhost, or matching origin
+      // Only allow legitimate templink domains, Cloudflare deployments, localhost, or matching origin
       const isAllowedHost =
         hostname === 'templink.in' ||
         hostname === 'www.templink.in' ||
+        hostname.endsWith('.templink.in') ||
         hostname === 'localhost' ||
         hostname === '127.0.0.1' ||
-        (typeof window !== 'undefined' && hostname === window.location.hostname);
+        hostname.endsWith('.pages.dev') ||
+        hostname.endsWith('.workers.dev') ||
+        (typeof window !== 'undefined' && (hostname === window.location.hostname || hostname === window.location.host));
 
       if (!isAllowedHost) {
         return {
@@ -89,13 +92,24 @@ export function parseQrContent(rawContent: string): ParsedQrResult {
       const pathMatch = url.pathname.match(/\/join\/([A-Za-z0-9-]+)/i);
       if (pathMatch && pathMatch[1]) {
         const code = normalizeRoomCode(pathMatch[1]);
-        return { valid: true, roomCode: code, joinUrl: getJoinUrl(code) };
+        if (code && code.length >= 4) {
+          return { valid: true, roomCode: code, joinUrl: getJoinUrl(code) };
+        }
       }
 
-      // Check query param ?code=XXXX-XXXX
+      // Check query param ?code=XXXX-XXXX or ?room=XXXX-XXXX
       const queryCode = url.searchParams.get('code') || url.searchParams.get('room');
       if (queryCode) {
         const code = normalizeRoomCode(queryCode);
+        if (code && code.length >= 4) {
+          return { valid: true, roomCode: code, joinUrl: getJoinUrl(code) };
+        }
+      }
+
+      // Check if URL contains an 8-char pattern e.g. /room/XXXX-XXXX
+      const anyRoomMatch = url.pathname.match(/([A-Za-z0-9]{4}-[A-Za-z0-9]{4})/i);
+      if (anyRoomMatch && anyRoomMatch[1]) {
+        const code = normalizeRoomCode(anyRoomMatch[1]);
         return { valid: true, roomCode: code, joinUrl: getJoinUrl(code) };
       }
 

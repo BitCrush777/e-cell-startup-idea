@@ -31,6 +31,7 @@ export default function ScanPage() {
   const [isProcessingImage, setIsProcessingImage] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -86,6 +87,7 @@ export default function ScanPage() {
       activePreviewUrlRef.current = null;
     }
     setPreviewImageUrl(null);
+    setUploadedFileName(null);
   }, []);
 
   const clearProcessingTimeout = useCallback(() => {
@@ -299,6 +301,7 @@ export default function ScanPage() {
     hasProcessedRef.current = false;
     setIsProcessingImage(true);
     setErrorMessage(null);
+    setUploadedFileName(file.name || 'image.png');
     clearProcessingTimeout();
 
     // Create temporary local object URL for preview
@@ -306,21 +309,29 @@ export default function ScanPage() {
     const objectUrl = URL.createObjectURL(file);
     activePreviewUrlRef.current = objectUrl;
     setPreviewImageUrl(objectUrl);
+    setUploadedFileName(file.name || 'image.png');
 
     // Strict safety timeout (4 seconds)
     processingTimeoutRef.current = setTimeout(() => {
       setIsProcessingImage(false);
       setScannerState('error');
-      setErrorMessage('Scanning timed out. Make sure the QR code is clearly visible and try again.');
+      setErrorMessage('No QR code detected. Choose an image with a clearly visible TempLink QR code.');
     }, 4000);
 
     try {
-      // Load image into HTMLImageElement
+      // Read file as Data URL for universal browser compatibility
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to read image file'));
+        reader.readAsDataURL(file);
+      });
+
       const img = new Image();
       await new Promise<void>((resolve, reject) => {
         img.onload = () => resolve();
         img.onerror = () => reject(new Error('Failed to load image'));
-        img.src = objectUrl;
+        img.src = dataUrl;
       });
 
       // Small async yield to allow preview to paint
@@ -335,7 +346,7 @@ export default function ScanPage() {
         handleQrPayload(result.data);
       } else {
         setScannerState('error');
-        setErrorMessage('No QR code found. Choose an image with a clearly visible TempLink QR code.');
+        setErrorMessage('No TempLink QR code found in this image.');
         toast('No QR code found in image', 'error', 3500, 'qr-not-found');
       }
     } catch (err: any) {
@@ -439,6 +450,7 @@ export default function ScanPage() {
               onClick={() => {
                 setScanMode('camera');
                 setErrorMessage(null);
+                clearPreviewUrl();
               }}
               className={`min-h-[44px] py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary ${
                 scanMode === 'camera'
@@ -511,7 +523,7 @@ export default function ScanPage() {
                 </div>
               )}
 
-              {(scannerState === 'denied' || scannerState === 'error') && (
+              {(scannerState === 'denied' || (scannerState === 'error' && !previewImageUrl)) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#080B12]/95 p-6 text-center animate-fade-in">
                   <span className="material-symbols-outlined text-4xl text-amber-400">
                     {scannerState === 'denied' ? 'videocam_off' : 'error'}
@@ -541,7 +553,7 @@ export default function ScanPage() {
               )}
             </div>
           ) : (
-            /* UPLOAD FROM GALLERY VIEWPORT (Fully Responsive with Multi-Tier Decoder) */
+            /* UPLOAD FROM GALLERY VIEWPORT (Enhanced Responsive & State-Aware) */
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -557,6 +569,8 @@ export default function ScanPage() {
               className={`relative w-full aspect-square max-w-[320px] rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center p-6 text-center cursor-pointer overflow-hidden shadow-inner ${
                 isDragging
                   ? 'border-primary bg-primary/15 scale-[0.99] shadow-[0_0_25px_rgba(99,102,241,0.3)]'
+                  : previewImageUrl && scannerState === 'error'
+                  ? 'border-amber-500/40 bg-[#0B0D14]'
                   : 'border-white/20 bg-[#05070B] hover:border-primary/50 hover:bg-[#0D111A]'
               }`}
             >
@@ -565,12 +579,15 @@ export default function ScanPage() {
                 <img
                   src={previewImageUrl}
                   alt="Selected QR preview"
-                  className="absolute inset-0 w-full h-full object-contain opacity-40 filter blur-[1px]"
+                  className={`absolute inset-0 w-full h-full object-contain ${
+                    isProcessingImage ? 'opacity-40 filter blur-[1px]' : 'opacity-25'
+                  }`}
                 />
               )}
 
+              {/* State A: Scanning Active */}
               {isProcessingImage ? (
-                <div className="relative z-10 flex flex-col items-center gap-3 bg-black/80 p-5 rounded-2xl backdrop-blur-sm shadow-xl">
+                <div className="relative z-10 flex flex-col items-center gap-3 bg-black/85 p-5 rounded-2xl backdrop-blur-md shadow-xl border border-white/10">
                   <div className="w-9 h-9 rounded-full border-2 border-primary border-t-transparent animate-spin motion-reduce:animate-none" />
                   <span className="text-xs font-bold text-white">Scanning image...</span>
                   <span className="text-[11px] text-slate-300">Processing locally in your browser</span>
@@ -586,7 +603,8 @@ export default function ScanPage() {
                   </button>
                 </div>
               ) : scannerState === 'detected' ? (
-                <div className="relative z-10 flex flex-col items-center gap-3 bg-black/80 p-4 rounded-2xl backdrop-blur-sm animate-fade-in">
+                /* State B: QR Code Successfully Detected */
+                <div className="relative z-10 flex flex-col items-center gap-3 bg-black/85 p-5 rounded-2xl backdrop-blur-md animate-fade-in border border-emerald-500/30">
                   <span className="material-symbols-outlined text-4xl text-emerald-400 animate-bounce motion-reduce:animate-none">
                     check_circle
                   </span>
@@ -596,7 +614,38 @@ export default function ScanPage() {
                   </span>
                   <span className="text-[11px] text-slate-300">Auto-filling room code...</span>
                 </div>
+              ) : previewImageUrl && scannerState === 'error' ? (
+                /* State C: Image Uploaded but No QR Detected */
+                <div className="relative z-10 flex flex-col items-center gap-2.5 w-full bg-black/80 p-4 rounded-2xl backdrop-blur-md border border-amber-500/20">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm">
+                    <span className="material-symbols-outlined text-[22px]">qr_code_2</span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white block">
+                      Image Received
+                    </span>
+                    <span className="text-[11px] text-amber-300/90 block mt-0.5 max-w-[220px]">
+                      {errorMessage || 'No TempLink QR code found in this image.'}
+                    </span>
+                    {uploadedFileName && (
+                      <span className="text-[10px] text-slate-400 block font-mono mt-1 truncate max-w-[200px]">
+                        {uploadedFileName}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    className="btn-primary min-h-[40px] py-2 px-4 rounded-xl text-xs font-bold uppercase tracking-wider mt-1 shadow-md w-full max-w-[190px]"
+                  >
+                    Choose Another Image
+                  </button>
+                </div>
               ) : (
+                /* State D: Default Initial Upload Dropzone */
                 <div className="relative z-10 flex flex-col items-center gap-3 w-full">
                   <div className="w-14 h-14 rounded-2xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light shadow-sm">
                     <span className="material-symbols-outlined text-[28px]">
@@ -635,8 +684,8 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* Scanner Status or Error Feedback */}
-          {errorMessage && (
+          {/* Additional Error Feedback / Action helper */}
+          {errorMessage && !previewImageUrl && (
             <div className="p-3.5 bg-red-950/40 border border-red-500/30 rounded-xl text-xs text-red-200 text-center w-full max-w-[320px] flex flex-col gap-2 animate-fade-in">
               <span className="font-semibold">{errorMessage}</span>
               {scanMode === 'upload' && (
@@ -671,7 +720,7 @@ export default function ScanPage() {
                 Live Camera Active — Align QR code within frame
               </span>
             )}
-            {scanMode === 'upload' && !isProcessingImage && !errorMessage && (
+            {scanMode === 'upload' && !isProcessingImage && (
               <span className="text-slate-400 flex items-center justify-center gap-1 text-[11px]">
                 <span className="material-symbols-outlined text-[14px] text-primary-light">lock</span>
                 Your image is processed on this device and is not uploaded to TempLink.
