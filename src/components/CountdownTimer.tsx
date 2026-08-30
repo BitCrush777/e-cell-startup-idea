@@ -47,7 +47,7 @@ export default function CountdownTimer({
 
   return (
     <div
-      className={`inline-flex items-center gap-1.5 font-mono text-xs font-semibold px-2.5 py-1 rounded-lg border transition-all ${
+      className={`inline-flex items-center gap-1 sm:gap-1.5 font-mono text-[11px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border transition-all shrink-0 ${
         isCritical
           ? 'bg-rose-950/60 border-rose-500/40 text-rose-300 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.2)]'
           : isWarning

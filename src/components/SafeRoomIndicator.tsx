@@ -10,11 +10,11 @@ export function SafeRoomIndicator() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[11px] font-medium text-primary-light hover:bg-primary/15 transition-all shadow-sm group"
+        className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[10px] sm:text-[11px] font-medium text-primary-light hover:bg-primary/15 transition-all shadow-sm group shrink-0"
         title="SafeRoom Active: Automated real-time conversation safety protection"
         aria-label="SafeRoom Active: click for details"
       >
-        <span className="material-symbols-outlined text-[14px] text-primary-light">
+        <span className="material-symbols-outlined text-[13px] sm:text-[14px] text-primary-light">
           shield
         </span>
         <span className="hidden sm:inline font-semibold">SafeRoom Active</span>

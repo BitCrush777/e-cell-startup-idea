@@ -429,43 +429,70 @@ export default function RoomChatPage() {
     );
   }
 
+  // Keyboard-aware viewport handling for mobile
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Apply chat-screen class to body to neutralize pb-16
+    document.body.classList.add('chat-screen');
+
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const handleResize = () => {
+      // When virtual keyboard opens, the visualViewport height shrinks
+      // Scroll to bottom to keep latest messages visible
+      if (vv.height < window.innerHeight * 0.75) {
+        // Keyboard is likely open
+        setTimeout(() => scrollToBottom(false), 50);
+      }
+    };
+
+    vv.addEventListener('resize', handleResize);
+    return () => {
+      document.body.classList.remove('chat-screen');
+      vv.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   return (
     <div className="bg-[#05070B] text-slate-100 font-sans h-screen h-[100dvh] w-screen overflow-hidden flex selection:bg-primary/30">
       <Sidebar userIdentity={currentParticipant.displayName} />
 
       <main className="flex-1 flex flex-col md:ml-64 h-full bg-[#05070B] relative overflow-hidden">
-        {/* App Shell Header (Chat Context) */}
-        <header className="w-full h-16 sm:h-20 border-b border-white/10 glass-panel flex items-center justify-between px-4 sm:px-6 z-20 shrink-0 bg-[#080B12]/90 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex flex-col">
-              <h2 className="font-display font-bold text-base sm:text-lg text-white flex items-center gap-2">
-                <span className="font-mono">{room.roomCode}</span>
-                <span className="material-symbols-outlined text-primary-light text-[18px]">
+        {/* App Shell Header (Chat Context) — compact on mobile */}
+        <header className="w-full h-12 sm:h-16 md:h-20 border-b border-white/10 glass-panel flex items-center justify-between px-2.5 sm:px-4 md:px-6 z-20 shrink-0 bg-[#080B12]/90 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
+            <div className="flex flex-col min-w-0">
+              <h2 className="font-display font-bold text-xs sm:text-base md:text-lg text-white flex items-center gap-1.5 sm:gap-2">
+                <span className="font-mono truncate">{room.roomCode}</span>
+                <span className="material-symbols-outlined text-primary-light text-[14px] sm:text-[18px]">
                   lock
                 </span>
               </h2>
               <span
-                className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 font-medium"
+                className="text-[10px] text-slate-400 flex items-center gap-1 sm:gap-1.5 mt-0.5 font-medium"
                 aria-label={`${room.participants.filter((p) => p.isOnline).length} of ${room.maxMembers || room.maxParticipants || 3} members currently connected`}
               >
-                <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                {room.participants.filter((p) => p.isOnline).length} / {room.maxMembers || room.maxParticipants || 3} members • {
-                  connectionStatus === 'connected'
-                    ? 'Connected'
+                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                <span className="truncate">
+                  {room.participants.filter((p) => p.isOnline).length}/{room.maxMembers || room.maxParticipants || 3} •{' '}
+                  {connectionStatus === 'connected'
+                    ? 'Live'
                     : connectionStatus === 'reconnecting'
                     ? 'Reconnecting...'
-                    : 'Disconnected'
-                }
+                    : 'Offline'}
+                </span>
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
             {/* SafeRoom Active Protection Indicator */}
             <SafeRoomIndicator />
 
             {/* Authoritative Server Countdown */}
-            <div className="flex items-center gap-2 bg-[#0D111A] px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-white/10 shadow-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-[#0D111A] px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-lg sm:rounded-xl border border-white/10 shadow-sm">
               <CountdownTimer expiresAt={room.expiresAt} onExpire={handleExpire} />
               <span className="hidden sm:inline w-px h-3.5 bg-white/20" />
               <span className="hidden sm:inline text-[10px] font-bold text-primary-light uppercase tracking-wider">
@@ -476,20 +503,20 @@ export default function RoomChatPage() {
             {/* QR Code Modal Trigger */}
             <button
               onClick={() => setIsQrOpen(true)}
-              className="p-2 sm:px-3 sm:py-2 border border-white/10 hover:bg-white/5 rounded-xl text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="p-1.5 sm:p-2 md:px-3 md:py-2 border border-white/10 hover:bg-white/5 rounded-lg sm:rounded-xl text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
               title="Show QR Code"
             >
-              <span className="material-symbols-outlined text-[18px]">qr_code_2</span>
+              <span className="material-symbols-outlined text-[16px] sm:text-[18px]">qr_code_2</span>
               <span className="hidden md:inline">QR</span>
             </button>
 
             {/* Details Drawer Trigger */}
             <button
               onClick={() => setIsDetailsOpen(true)}
-              className="p-2 sm:px-3 sm:py-2 border border-white/10 hover:bg-white/5 rounded-xl text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="p-1.5 sm:p-2 md:px-3 md:py-2 border border-white/10 hover:bg-white/5 rounded-lg sm:rounded-xl text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
               title="Room Info"
             >
-              <span className="material-symbols-outlined text-[18px]">info</span>
+              <span className="material-symbols-outlined text-[16px] sm:text-[18px]">info</span>
               <span className="hidden md:inline">Details</span>
             </button>
           </div>
@@ -500,14 +527,14 @@ export default function RoomChatPage() {
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto px-4 py-6 md:px-8 flex flex-col z-10 scroll-smooth"
+            className="flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-6 md:px-8 flex flex-col z-10 chat-scroll-mobile"
           >
-            <div className="max-w-[768px] mx-auto w-full flex flex-col gap-4 pb-28">
+            <div className="max-w-[768px] mx-auto w-full flex flex-col gap-2.5 sm:gap-3 md:gap-4 pb-20 sm:pb-28">
               {/* Ephemeral Notice */}
-              <div className="flex justify-center my-2">
-                <div className="bg-[#0D111A]/90 border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-2 backdrop-blur-md shadow-sm">
-                  <span className="material-symbols-outlined text-[15px] text-primary-light">visibility_off</span>
-                  <span className="text-[11px] font-medium text-slate-400">
+              <div className="flex justify-center my-1 sm:my-2">
+                <div className="bg-[#0D111A]/90 border border-white/10 rounded-full px-3 py-1 sm:px-4 sm:py-1.5 flex items-center gap-1.5 sm:gap-2 backdrop-blur-md shadow-sm">
+                  <span className="material-symbols-outlined text-[13px] sm:text-[15px] text-primary-light">visibility_off</span>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-slate-400">
                     Temporary private room • SafeRoom active
                   </span>
                 </div>
@@ -515,20 +542,20 @@ export default function RoomChatPage() {
 
               {/* Empty Chat State for First-Time Room Conversations */}
               {messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center text-center py-12 px-4 gap-3.5 my-auto animate-fade-in">
-                  <div className="w-14 h-14 rounded-2xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light shadow-lg">
-                    <span className="material-symbols-outlined text-[28px]">chat_bubble_outline</span>
+                <div className="flex flex-col items-center justify-center text-center py-6 sm:py-12 px-3 sm:px-4 gap-2.5 sm:gap-3.5 my-auto animate-fade-in">
+                  <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light shadow-lg">
+                    <span className="material-symbols-outlined text-[22px] sm:text-[28px]">chat_bubble_outline</span>
                   </div>
                   <div className="flex flex-col gap-1 max-w-sm">
-                    <h3 className="text-base font-bold text-white">
+                    <h3 className="text-sm sm:text-base font-bold text-white">
                       Start the conversation
                     </h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <p className="text-[11px] sm:text-xs text-slate-400 leading-relaxed">
                       Say hello — your conversation is limited to this temporary room.
                     </p>
                   </div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0D111A] border border-white/10 text-[11px] text-slate-400">
-                    <span className="material-symbols-outlined text-[14px] text-primary-light">fingerprint</span>
+                  <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-[#0D111A] border border-white/10 text-[10px] sm:text-[11px] text-slate-400">
+                    <span className="material-symbols-outlined text-[13px] sm:text-[14px] text-primary-light">fingerprint</span>
                     <span>
                       You&apos;re using temporary identity <strong className="text-white">{currentParticipant.displayName}</strong>
                     </span>
@@ -559,23 +586,23 @@ export default function RoomChatPage() {
           {hasUnreadBelow && (
             <button
               onClick={() => scrollToBottom(true)}
-              className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 bg-[#6366F1] text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1.5 hover:bg-primary-hover transition-all animate-bounce"
+              className="absolute bottom-16 sm:bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 z-30 bg-[#6366F1] text-white px-3.5 py-1 sm:px-4 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold shadow-lg flex items-center gap-1.5 hover:bg-primary-hover transition-all animate-bounce"
             >
               <span>New messages</span>
-              <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+              <span className="material-symbols-outlined text-[14px] sm:text-[16px]">arrow_downward</span>
             </button>
           )}
 
           {/* Sticky Bottom Composer with Mobile Safe-Area */}
-          <div className="absolute bottom-0 w-full p-3 sm:p-4 bg-[#080B12]/95 backdrop-blur-xl border-t border-white/10 z-20 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <form onSubmit={handleSendMessage} className="max-w-[768px] mx-auto flex items-end gap-2 sm:gap-3">
+          <div className="absolute bottom-0 w-full p-2 sm:p-3 md:p-4 bg-[#080B12]/95 backdrop-blur-xl border-t border-white/10 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <form onSubmit={handleSendMessage} className="max-w-[768px] mx-auto flex items-end gap-1.5 sm:gap-2 md:gap-3">
               <button
                 type="button"
                 onClick={() => setIsFileModalOpen(true)}
-                className="p-3 text-slate-400 hover:text-primary-light transition-colors hover:bg-white/5 rounded-xl shrink-0"
+                className="p-2 sm:p-2.5 md:p-3 text-slate-400 hover:text-primary-light transition-colors hover:bg-white/5 rounded-xl shrink-0"
                 title="Attach file / image"
               >
-                <span className="material-symbols-outlined text-[20px]">attach_file</span>
+                <span className="material-symbols-outlined text-[18px] sm:text-[20px]">attach_file</span>
               </button>
 
               <div className="flex-1 bg-[#05070B] border border-white/15 rounded-xl flex items-end focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/50 transition-all relative">
@@ -589,17 +616,17 @@ export default function RoomChatPage() {
                       handleSendMessage();
                     }
                   }}
-                  placeholder="Write a private message... (Enter to send)"
-                  className="w-full bg-transparent text-white placeholder:text-slate-600 border-none focus:ring-0 resize-none py-3 pl-4 pr-10 text-xs sm:text-sm max-h-[120px]"
+                  placeholder="Write a private message..."
+                  className="w-full bg-transparent text-white placeholder:text-slate-500 border-none focus:ring-0 resize-none py-2 sm:py-2.5 md:py-3 pl-3 sm:pl-4 pr-3 text-[13px] sm:text-sm max-h-[120px]"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={!inputText.trim()}
-                className="p-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center font-bold shadow-[0_0_15px_rgba(99,102,241,0.35)]"
+                className="p-2 sm:p-2.5 md:p-3 bg-primary text-white rounded-xl hover:bg-primary-hover transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center font-bold shadow-[0_0_15px_rgba(99,102,241,0.35)]"
               >
-                <span className="material-symbols-outlined text-[20px]">
+                <span className="material-symbols-outlined text-[18px] sm:text-[20px]">
                   send
                 </span>
               </button>

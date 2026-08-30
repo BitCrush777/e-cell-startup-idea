@@ -142,4 +142,17 @@
     color: #FFFFFF;
     transform: translateY(-1px);
   }
+
+  /* Chat Screen — neutralizes body padding and enables immersive mobile chat */
+  .chat-screen {
+    padding-bottom: 0 !important;
+    overflow: hidden;
+  }
+
+  /* Mobile chat scroll container — native overscroll feel */
+  .chat-scroll-mobile {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-behavior: smooth;
+  }
 }
