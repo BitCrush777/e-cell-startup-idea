@@ -315,7 +315,7 @@ export default function ScanPage() {
     processingTimeoutRef.current = setTimeout(() => {
       setIsProcessingImage(false);
       setScannerState('error');
-      setErrorMessage('No QR code detected. Choose an image with a clearly visible TempLink QR code.');
+      setErrorMessage('No TempLink QR code detected in this image.');
     }, 4000);
 
     try {
@@ -553,7 +553,7 @@ export default function ScanPage() {
               )}
             </div>
           ) : (
-            /* UPLOAD FROM GALLERY VIEWPORT (Enhanced Responsive & State-Aware) */
+            /* UPLOAD FROM GALLERY VIEWPORT (Dedicated State Views) */
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -585,12 +585,12 @@ export default function ScanPage() {
                 />
               )}
 
-              {/* State A: Scanning Active */}
+              {/* State A: Scanning in Progress */}
               {isProcessingImage ? (
                 <div className="relative z-10 flex flex-col items-center gap-3 bg-black/85 p-5 rounded-2xl backdrop-blur-md shadow-xl border border-white/10">
                   <div className="w-9 h-9 rounded-full border-2 border-primary border-t-transparent animate-spin motion-reduce:animate-none" />
-                  <span className="text-xs font-bold text-white">Scanning image...</span>
-                  <span className="text-[11px] text-slate-300">Processing locally in your browser</span>
+                  <span className="text-xs font-bold text-white">Scanning QR Code...</span>
+                  <span className="text-[11px] text-slate-300">Detecting room code locally...</span>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -614,8 +614,8 @@ export default function ScanPage() {
                   </span>
                   <span className="text-[11px] text-slate-300">Auto-filling room code...</span>
                 </div>
-              ) : previewImageUrl && scannerState === 'error' ? (
-                /* State C: Image Uploaded but No QR Detected */
+              ) : previewImageUrl ? (
+                /* State C: Image Was Uploaded (shows image info & retry button) */
                 <div className="relative z-10 flex flex-col items-center gap-2.5 w-full bg-black/80 p-4 rounded-2xl backdrop-blur-md border border-amber-500/20">
                   <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm">
                     <span className="material-symbols-outlined text-[22px]">qr_code_2</span>
@@ -645,7 +645,7 @@ export default function ScanPage() {
                   </button>
                 </div>
               ) : (
-                /* State D: Default Initial Upload Dropzone */
+                /* State D: Default Initial Dropzone */
                 <div className="relative z-10 flex flex-col items-center gap-3 w-full">
                   <div className="w-14 h-14 rounded-2xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light shadow-sm">
                     <span className="material-symbols-outlined text-[28px]">
@@ -679,34 +679,6 @@ export default function ScanPage() {
                   <span className="text-[10px] text-slate-500 block">
                     Screenshots and saved QR images are supported
                   </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Additional Error Feedback / Action helper */}
-          {errorMessage && !previewImageUrl && (
-            <div className="p-3.5 bg-red-950/40 border border-red-500/30 rounded-xl text-xs text-red-200 text-center w-full max-w-[320px] flex flex-col gap-2 animate-fade-in">
-              <span className="font-semibold">{errorMessage}</span>
-              {scanMode === 'upload' && (
-                <div className="flex gap-2 justify-center mt-1">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="btn-primary text-[10px] font-bold py-1.5 px-3 rounded-lg uppercase min-h-[36px]"
-                  >
-                    Choose Another Image
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScanMode('camera');
-                      setErrorMessage(null);
-                    }}
-                    className="btn-ghost text-[10px] font-semibold py-1.5 px-3 rounded-lg min-h-[36px]"
-                  >
-                    Scan with Camera
-                  </button>
                 </div>
               )}
             </div>

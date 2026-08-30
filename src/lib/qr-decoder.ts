@@ -1,4 +1,13 @@
 import jsQR from 'jsqr';
+import {
+  BrowserQRCodeReader,
+  MultiFormatReader,
+  BarcodeFormat,
+  DecodeHintType,
+  RGBLuminanceSource,
+  BinaryBitmap,
+  HybridBinarizer,
+} from '@zxing/library';
 
 export interface DecodeQrResult {
   success: boolean;
@@ -6,34 +15,53 @@ export interface DecodeQrResult {
   error?: string;
 }
 
+// Pre-configured ZXing MultiFormatReader with TRY_HARDER
+function getZxingReader(): MultiFormatReader {
+  const hints = new Map();
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE]);
+  hints.set(DecodeHintType.TRY_HARDER, true);
+  const reader = new MultiFormatReader();
+  reader.setHints(hints);
+  return reader;
+}
+
 /**
- * Robust multi-tier local in-browser QR decoder.
- * Works seamlessly with screenshots, mobile camera photos, dark mode screenshots,
- * and compressed image files. Never uploads to any external server.
+ * Universal, ultra-resilient local in-browser QR decoder.
+ * Uses ZXing (Google/Android engine), native BarcodeDetector, and jsQR multi-pass.
+ * 100% private - never uploads to any server.
  */
 export async function decodeQrFromImageElement(
-  img: HTMLImageElement | ImageBitmap
+  img: HTMLImageElement
 ): Promise<DecodeQrResult> {
-  const width = img.width;
-  const height = img.height;
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
 
   if (!width || !height) {
     return { success: false, error: 'Invalid image dimensions' };
   }
 
-  // 1. Native Browser BarcodeDetector (Hardware-accelerated)
+  // 1. Native Browser BarcodeDetector (Hardware Accelerated)
   if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
     try {
       const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-      
-      // Try on original image
       const barcodes = await detector.detect(img);
       if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
         return { success: true, data: barcodes[0].rawValue };
       }
     } catch {
-      // Fall through to canvas-based decoders
+      // Continue to ZXing engine
     }
+  }
+
+  // 2. ZXing BrowserQRCodeReader directly on HTMLImageElement
+  try {
+    const zxingBrowserReader = new BrowserQRCodeReader();
+    const result = await zxingBrowserReader.decodeFromImageElement(img);
+    if (result && result.getText()) {
+      return { success: true, data: result.getText() };
+    }
+  } catch {
+    // Continue to canvas-based ZXing and jsQR passes
   }
 
   const canvas = document.createElement('canvas');
@@ -42,8 +70,56 @@ export async function decodeQrFromImageElement(
     return { success: false, error: 'Could not initialize 2D canvas context' };
   }
 
-  // Pass 1: Native or Clamped Full-Resolution (Max 1600px)
-  // Keeps QR code modules large enough (200px+) on tall phone screenshots
+  // 3. Full-Resolution ZXing HybridBinarizer Pass (Ideal for desktop screenshots with small QR codes)
+  try {
+    canvas.width = width;
+    canvas.height = height;
+    ctx.drawImage(img, 0, 0, width, height);
+    const fullImageData = ctx.getImageData(0, 0, width, height);
+
+    const luminanceSource = new RGBLuminanceSource(
+      fullImageData.data,
+      width,
+      height
+    );
+    const binaryBitmap = new BinaryBitmap(new HybridBinarizer(luminanceSource));
+    const zxingReader = getZxingReader();
+    const result = zxingReader.decode(binaryBitmap);
+    if (result && result.getText()) {
+      return { success: true, data: result.getText() };
+    }
+  } catch {
+    // Continue to center crop and jsQR passes
+  }
+
+  // 4. Center 65% Crop with ZXing (Targets modal QR codes in desktop and mobile screenshots)
+  try {
+    const cropW = Math.round(width * 0.65);
+    const cropH = Math.round(height * 0.65);
+    const cropX = Math.round((width - cropW) / 2);
+    const cropY = Math.round((height - cropH) / 2);
+
+    canvas.width = cropW;
+    canvas.height = cropH;
+    ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+    const cropImageData = ctx.getImageData(0, 0, cropW, cropH);
+    const cropLuminance = new RGBLuminanceSource(
+      cropImageData.data,
+      cropW,
+      cropH
+    );
+    const cropBitmap = new BinaryBitmap(new HybridBinarizer(cropLuminance));
+    const zxingReader = getZxingReader();
+    const result = zxingReader.decode(cropBitmap);
+    if (result && result.getText()) {
+      return { success: true, data: result.getText() };
+    }
+  } catch {
+    // Continue to jsQR passes
+  }
+
+  // 5. jsQR Native Resolution Pass with Inversion Support
   const maxDim = 1600;
   let scale = 1;
   if (Math.max(width, height) > maxDim) {
@@ -53,7 +129,7 @@ export async function decodeQrFromImageElement(
   const h1 = Math.round(height * scale);
   canvas.width = w1;
   canvas.height = h1;
-  ctx.drawImage(img as CanvasImageSource, 0, 0, w1, h1);
+  ctx.drawImage(img, 0, 0, w1, h1);
 
   let imgData = ctx.getImageData(0, 0, w1, h1);
   let code = jsQR(imgData.data, w1, h1, { inversionAttempts: 'attemptBoth' });
@@ -61,89 +137,40 @@ export async function decodeQrFromImageElement(
     return { success: true, data: code.data };
   }
 
-  // Pass 2: Center 60% Crop (Targets mobile screenshots where QR is in the center modal)
-  const cropW = Math.round(w1 * 0.65);
-  const cropH = Math.round(h1 * 0.65);
-  const cropX = Math.round((w1 - cropW) / 2);
-  const cropY = Math.round((h1 - cropH) / 2);
+  // 6. jsQR Center Crop Pass
+  const cropW1 = Math.round(w1 * 0.65);
+  const cropH1 = Math.round(h1 * 0.65);
+  const cropX1 = Math.round((w1 - cropW1) / 2);
+  const cropY1 = Math.round((h1 - cropH1) / 2);
 
-  canvas.width = cropW;
-  canvas.height = cropH;
-  ctx.drawImage(
-    img as CanvasImageSource,
-    cropX / scale,
-    cropY / scale,
-    cropW / scale,
-    cropH / scale,
-    0,
-    0,
-    cropW,
-    cropH
-  );
+  canvas.width = cropW1;
+  canvas.height = cropH1;
+  ctx.drawImage(img, cropX1 / scale, cropY1 / scale, cropW1 / scale, cropH1 / scale, 0, 0, cropW1, cropH1);
 
-  imgData = ctx.getImageData(0, 0, cropW, cropH);
-  code = jsQR(imgData.data, cropW, cropH, { inversionAttempts: 'attemptBoth' });
+  imgData = ctx.getImageData(0, 0, cropW1, cropH1);
+  code = jsQR(imgData.data, cropW1, cropH1, { inversionAttempts: 'attemptBoth' });
   if (code && code.data) {
     return { success: true, data: code.data };
   }
 
-  // Pass 3: High-Contrast & Binarization on Center Crop
-  // Solves dark-theme screenshots, glare, and low-contrast mobile captures
-  const dCrop = imgData.data;
-  let totalLuminance = 0;
-  for (let i = 0; i < dCrop.length; i += 4) {
-    totalLuminance += dCrop[i] * 0.299 + dCrop[i + 1] * 0.587 + dCrop[i + 2] * 0.114;
+  // 7. jsQR Adaptive Binarization / Contrast Boost
+  const d = imgData.data;
+  let totalLum = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    totalLum += d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
   }
-  const avgLuminance = totalLuminance / (dCrop.length / 4);
-
-  // Apply binarization
-  for (let i = 0; i < dCrop.length; i += 4) {
-    const lum = dCrop[i] * 0.299 + dCrop[i + 1] * 0.587 + dCrop[i + 2] * 0.114;
-    const v = lum > avgLuminance ? 255 : 0;
-    dCrop[i] = v;
-    dCrop[i + 1] = v;
-    dCrop[i + 2] = v;
+  const avgLum = totalLum / (d.length / 4);
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+    const v = lum > avgLum ? 255 : 0;
+    d[i] = v;
+    d[i + 1] = v;
+    d[i + 2] = v;
   }
   ctx.putImageData(imgData, 0, 0);
-
-  code = jsQR(dCrop, cropW, cropH, { inversionAttempts: 'attemptBoth' });
+  code = jsQR(d, cropW1, cropH1, { inversionAttempts: 'attemptBoth' });
   if (code && code.data) {
     return { success: true, data: code.data };
-  }
-
-  // Pass 4: High-Contrast & Binarization on Full Image
-  canvas.width = w1;
-  canvas.height = h1;
-  ctx.drawImage(img as CanvasImageSource, 0, 0, w1, h1);
-  imgData = ctx.getImageData(0, 0, w1, h1);
-  const dFull = imgData.data;
-  for (let i = 0; i < dFull.length; i += 4) {
-    const lum = dFull[i] * 0.299 + dFull[i + 1] * 0.587 + dFull[i + 2] * 0.114;
-    const v = lum > avgLuminance ? 255 : 0;
-    dFull[i] = v;
-    dFull[i + 1] = v;
-    dFull[i + 2] = v;
-  }
-  ctx.putImageData(imgData, 0, 0);
-  code = jsQR(dFull, w1, h1, { inversionAttempts: 'attemptBoth' });
-  if (code && code.data) {
-    return { success: true, data: code.data };
-  }
-
-  // Pass 5: Downscaled Scale for 4K / Ultra High-Res Camera Shots (900px)
-  if (Math.max(width, height) > 1000) {
-    const scaleDown = 900 / Math.max(width, height);
-    const wDown = Math.round(width * scaleDown);
-    const hDown = Math.round(height * scaleDown);
-    canvas.width = wDown;
-    canvas.height = hDown;
-    ctx.drawImage(img as CanvasImageSource, 0, 0, wDown, hDown);
-
-    imgData = ctx.getImageData(0, 0, wDown, hDown);
-    code = jsQR(imgData.data, wDown, hDown, { inversionAttempts: 'attemptBoth' });
-    if (code && code.data) {
-      return { success: true, data: code.data };
-    }
   }
 
   return { success: false, error: 'No QR code detected' };
