@@ -14,6 +14,7 @@
     "worker:deploy": "wrangler deploy cloudflare/worker.ts"
   },
   "dependencies": {
+    "@types/qrcode": "^1.5.6",
     "@zxing/library": "^0.23.0",
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",
@@ -21,6 +22,7 @@
     "jsqr": "^1.4.0",
     "lucide-react": "^0.453.0",
     "next": "^14.2.15",
+    "qrcode": "^1.5.4",
     "qrcode.react": "^4.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -31,9 +33,11 @@
     "@opennextjs/cloudflare": "^1.14.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20.17.0",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
+    "pngjs": "^7.0.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "tsx": "^4.19.2",

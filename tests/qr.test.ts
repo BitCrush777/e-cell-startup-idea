@@ -1,5 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
+import QRCode from 'qrcode';
+import { PNG } from 'pngjs';
+import jsQR from 'jsqr';
 import { parseQrContent, getJoinUrl, extractRoomCode, normalizeRoomCode } from '../src/lib/urls';
 import { createRoom } from '../src/lib/room-store';
 
@@ -80,5 +83,95 @@ describe('TempLink QR Code Generation, URL Parsing & Normalization Tests', () =>
 
     assert.strictEqual(codes.size, 100);
     assert.strictEqual(joinUrls.size, 100);
+  });
+
+  test('Real QR Pipeline: Decodes generated QR PNG buffer and extracts room code', async () => {
+    const url = 'https://templink.in/join/9A4K-2XYZ';
+    const buffer = await QRCode.toBuffer(url, {
+      errorCorrectionLevel: 'M',
+      margin: 4,
+      width: 250,
+      color: { dark: '#000000', light: '#ffffff' },
+    });
+
+    const png = PNG.sync.read(buffer);
+    const code = jsQR(new Uint8ClampedArray(png.data), png.width, png.height, {
+      inversionAttempts: 'attemptBoth',
+    });
+
+    assert.ok(code && code.data, 'QR must decode successfully');
+    assert.strictEqual(code.data, url);
+    assert.strictEqual(extractRoomCode(code.data), '9A4K-2XYZ');
+  });
+
+  test('Desktop Screenshot Simulation: Decodes 1920x1080 screenshot with centered modal QR', async () => {
+    const url = 'https://templink.in/join/7M4P-8K2L';
+    const qrBuffer = await QRCode.toBuffer(url, {
+      errorCorrectionLevel: 'M',
+      margin: 4,
+      width: 200,
+      color: { dark: '#000000', light: '#ffffff' },
+    });
+    const qrPng = PNG.sync.read(qrBuffer);
+
+    // Create 1920x1080 dark theme desktop canvas
+    const desktop = new PNG({ width: 1920, height: 1080 });
+    for (let i = 0; i < desktop.data.length; i += 4) {
+      desktop.data[i] = 8;
+      desktop.data[i + 1] = 11;
+      desktop.data[i + 2] = 18;
+      desktop.data[i + 3] = 255;
+    }
+    const startX = Math.floor((1920 - qrPng.width) / 2);
+    const startY = Math.floor((1080 - qrPng.height) / 2);
+    PNG.bitblt(qrPng, desktop, 0, 0, qrPng.width, qrPng.height, startX, startY);
+
+    // Pass 1: Direct full image
+    const code = jsQR(new Uint8ClampedArray(desktop.data), desktop.width, desktop.height, {
+      inversionAttempts: 'attemptBoth',
+    });
+
+    assert.ok(code && code.data, 'Desktop screenshot QR must decode');
+    assert.strictEqual(code.data, url);
+    assert.strictEqual(extractRoomCode(code.data), '7M4P-8K2L');
+  });
+
+  test('Mobile Screenshot Simulation: Decodes 1080x2400 tall screenshot with modal QR', async () => {
+    const url = 'https://templink.in/join/3B8X-9N1P';
+    const qrBuffer = await QRCode.toBuffer(url, {
+      errorCorrectionLevel: 'M',
+      margin: 4,
+      width: 220,
+      color: { dark: '#000000', light: '#ffffff' },
+    });
+    const qrPng = PNG.sync.read(qrBuffer);
+
+    // Create 1080x2400 tall mobile canvas
+    const mobile = new PNG({ width: 1080, height: 2400 });
+    for (let i = 0; i < mobile.data.length; i += 4) {
+      mobile.data[i] = 5;
+      mobile.data[i + 1] = 7;
+      mobile.data[i + 2] = 11;
+      mobile.data[i + 3] = 255;
+    }
+    const startX = Math.floor((1080 - qrPng.width) / 2);
+    const startY = Math.floor((2400 - qrPng.height) / 2);
+    PNG.bitblt(qrPng, mobile, 0, 0, qrPng.width, qrPng.height, startX, startY);
+
+    // Center 60% crop test
+    const cropW = Math.floor(mobile.width * 0.6);
+    const cropH = Math.floor(mobile.height * 0.6);
+    const cropX = Math.floor((mobile.width - cropW) / 2);
+    const cropY = Math.floor((mobile.height - cropH) / 2);
+    const cropped = new PNG({ width: cropW, height: cropH });
+    PNG.bitblt(mobile, cropped, cropX, cropY, cropW, cropH, 0, 0);
+
+    const code = jsQR(new Uint8ClampedArray(cropped.data), cropW, cropH, {
+      inversionAttempts: 'attemptBoth',
+    });
+
+    assert.ok(code && code.data, 'Mobile screenshot QR must decode');
+    assert.strictEqual(code.data, url);
+    assert.strictEqual(extractRoomCode(code.data), '3B8X-9N1P');
   });
 });
