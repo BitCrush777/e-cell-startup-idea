@@ -291,6 +291,31 @@ export default function RoomChatPage() {
     };
   }, [roomCode, router, toast]);
 
+  // Keyboard-aware viewport handling & mobile immersive layout
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Apply chat-screen class to body to neutralize pb-16
+    document.body.classList.add('chat-screen');
+
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const handleResize = () => {
+      // When virtual keyboard opens, visualViewport height shrinks
+      // Scroll to bottom to keep latest messages in view
+      if (vv.height < window.innerHeight * 0.75) {
+        setTimeout(() => scrollToBottom(false), 50);
+      }
+    };
+
+    vv.addEventListener('resize', handleResize);
+    return () => {
+      document.body.classList.remove('chat-screen');
+      vv.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputText(e.target.value);
 
@@ -398,7 +423,7 @@ export default function RoomChatPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen h-[100dvh] w-screen items-center justify-center bg-[#05070B]">
+      <div className="flex h-screen h-[100dvh] min-h-[100dvh] w-screen items-center justify-center bg-[#05070B]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
           <span className="text-xs font-mono text-slate-400 tracking-wider uppercase">
@@ -411,7 +436,7 @@ export default function RoomChatPage() {
 
   if (error || !room || !currentParticipant) {
     return (
-      <div className="flex h-screen h-[100dvh] w-screen items-center justify-center bg-[#05070B] p-4">
+      <div className="flex h-screen h-[100dvh] min-h-[100dvh] w-screen items-center justify-center bg-[#05070B] p-4">
         <div className="glass-panel p-8 rounded-3xl max-w-md w-full text-center flex flex-col items-center gap-4 border border-white/10 bg-[#080B12]/90 shadow-2xl">
           <span className="material-symbols-outlined text-4xl text-rose-500">error</span>
           <h2 className="font-display font-bold text-xl text-white">Room Unavailable</h2>
@@ -429,37 +454,11 @@ export default function RoomChatPage() {
     );
   }
 
-  // Keyboard-aware viewport handling for mobile
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Apply chat-screen class to body to neutralize pb-16
-    document.body.classList.add('chat-screen');
-
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    const handleResize = () => {
-      // When virtual keyboard opens, the visualViewport height shrinks
-      // Scroll to bottom to keep latest messages visible
-      if (vv.height < window.innerHeight * 0.75) {
-        // Keyboard is likely open
-        setTimeout(() => scrollToBottom(false), 50);
-      }
-    };
-
-    vv.addEventListener('resize', handleResize);
-    return () => {
-      document.body.classList.remove('chat-screen');
-      vv.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
   return (
-    <div className="bg-[#05070B] text-slate-100 font-sans h-screen h-[100dvh] w-screen overflow-hidden flex selection:bg-primary/30">
+    <div className="bg-[#05070B] text-slate-100 font-sans h-screen h-[100dvh] min-h-[100dvh] w-screen overflow-hidden flex selection:bg-primary/30">
       <Sidebar userIdentity={currentParticipant.displayName} />
 
-      <main className="flex-1 flex flex-col md:ml-64 h-full bg-[#05070B] relative overflow-hidden">
+      <main className="flex-1 flex flex-col md:ml-64 h-full min-h-full bg-[#05070B] relative overflow-hidden">
         {/* App Shell Header (Chat Context) — compact on mobile */}
         <header className="w-full h-12 sm:h-16 md:h-20 border-b border-white/10 glass-panel flex items-center justify-between px-2.5 sm:px-4 md:px-6 z-20 shrink-0 bg-[#080B12]/90 backdrop-blur-xl pt-[env(safe-area-inset-top)]">
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
