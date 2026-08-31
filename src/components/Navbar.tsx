@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import HelpModal from './HelpModal';
+import SplineNavigation from './SplineNavigation';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -103,24 +104,9 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-1 bg-[#0D111A]/60 p-1 rounded-xl border border-white/5 backdrop-blur-md">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`text-xs font-medium px-3.5 py-1.5 rounded-lg transition-all ${
-                  isActive
-                    ? 'bg-[#161E2E] text-white shadow-sm border border-white/10'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
+        {/* Desktop Links — Integrated Spline Liquid Glass Candy 2 */}
+        <div className="hidden md:flex items-center">
+          <SplineNavigation navLinks={navLinks} />
         </div>
 
         {/* Action CTAs & Auth Controls */}
