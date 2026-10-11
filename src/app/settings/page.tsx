@@ -58,7 +58,7 @@ export default function SettingsPage() {
               </div>
               <h1 className="font-display text-3xl font-bold text-white">Settings</h1>
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Manage your profile, subscription tier, and client privacy controls.
+                Manage your profile, account preferences, and client privacy controls.
               </p>
             </div>
           </BlurFade>
@@ -96,43 +96,55 @@ export default function SettingsPage() {
 
                   <hr className="border-white/10" />
 
-                  {/* Plan Switcher */}
+                  {/* Plan Overview & Early-Access Status */}
                   <div className="space-y-3">
-                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
-                      Subscription Plan
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+                        Access: Free Trial / Early Access
+                      </label>
+                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                        Free Trial Active
+                      </span>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {(['FREE', 'PRO', 'BUSINESS'] as UserPlan[]).map((plan) => {
-                        const isCurrent = (user.plan || 'FREE').toUpperCase() === plan;
-                        return (
-                          <div
-                            key={plan}
-                            onClick={() => !isCurrent && !isUpdatingPlan && handlePlanChange(plan)}
-                            className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
-                              isCurrent
-                                ? 'bg-primary/15 border-primary shadow-[0_0_20px_rgba(99,102,241,0.25)]'
-                                : 'bg-[#0D111A] border-white/10 hover:border-white/20'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start mb-2">
-                              <span className="text-xs font-bold font-mono text-white">{plan}</span>
-                              {isCurrent && (
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                              )}
-                            </div>
-                            <span className="text-[11px] text-slate-400">
-                              {plan === 'FREE'
-                                ? 'Up to 3 members per room'
-                                : plan === 'PRO'
-                                ? 'Up to 10 members & 24h TTL'
-                                : 'Enterprise clusters (25+ members)'}
-                            </span>
-                            <span className="text-[10px] text-primary-light font-semibold mt-3">
-                              {isCurrent ? 'Active Plan' : 'Switch to ' + plan}
-                            </span>
-                          </div>
-                        );
-                      })}
+                      <div className="p-4 rounded-2xl border bg-primary/15 border-primary shadow-[0_0_20px_rgba(99,102,241,0.25)] flex flex-col justify-between">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold font-mono text-white">FREE TRIAL</span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        </div>
+                        <span className="text-[11px] text-slate-300">
+                          Up to 3 members per room • Full in-memory temporary features
+                        </span>
+                        <span className="text-[10px] text-emerald-300 font-semibold mt-3">
+                          Current Active Plan
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-2xl border bg-[#0D111A] border-white/10 opacity-75 flex flex-col justify-between">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold font-mono text-slate-400">PRO (PLANNED)</span>
+                          <span className="text-[9px] font-mono bg-[#161E2E] text-slate-400 px-1.5 py-0.5 rounded">Future</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400">
+                          Planned: Up to 10 members & 24h room TTL
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium mt-3">
+                          Under Evaluation
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-2xl border bg-[#0D111A] border-white/10 opacity-75 flex flex-col justify-between">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold font-mono text-slate-400">BUSINESS</span>
+                          <span className="text-[9px] font-mono bg-[#161E2E] text-slate-400 px-1.5 py-0.5 rounded">Concept</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400">
+                          Planned: Organization clusters (25+ members)
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium mt-3">
+                          Future Offering
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </>
@@ -145,7 +157,7 @@ export default function SettingsPage() {
                     <div>
                       <h4 className="font-bold text-xs sm:text-sm text-white">Guest Session Mode</h4>
                       <p className="text-[11px] text-slate-400">
-                        Create an optional account to unlock Pro 24h rooms and subscriptions.
+                        Create an optional account or sign in to save your session preferences.
                       </p>
                     </div>
                   </div>

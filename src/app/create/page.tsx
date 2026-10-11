@@ -455,22 +455,22 @@ export default function CreateRoomPage() {
               </span>
             </div>
 
-            {/* Upgrade prompt for Free users */}
+            {/* Free Trial room capacity notice */}
             {userPlan === 'FREE' && (
               <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary-light text-[18px]">
-                    upgrade
+                    info
                   </span>
                   <span className="text-slate-300">
-                    Need more people? <strong className="text-white">Upgrade to Pro</strong> for up to 10 members.
+                    Free trial limit: 3 participants per room. Larger rooms coming with paid plans.
                   </span>
                 </div>
                 <Link
                   href="/pricing"
                   className="text-primary-light font-semibold hover:underline shrink-0 ml-2"
                 >
-                  Upgrade
+                  View Plans
                 </Link>
               </div>
             )}

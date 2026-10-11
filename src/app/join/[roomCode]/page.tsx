@@ -148,7 +148,7 @@ export default function JoinByRoomCodePage() {
 
           {errorStatus === 'full' && roomPlan === 'FREE' && (
             <p className="text-[11px] text-slate-500">
-              Upgrade to Pro for up to 10 members per room.
+              Free trial rooms support up to 3 members. Higher capacity rooms are coming with paid plans.
             </p>
           )}
 
@@ -156,9 +156,9 @@ export default function JoinByRoomCodePage() {
             {errorStatus === 'full' && roomPlan === 'FREE' && (
               <Link
                 href="/pricing"
-                className="btn-primary flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-center"
+                className="btn-ghost flex-1 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-center"
               >
-                Upgrade to Pro
+                Plan Details
               </Link>
             )}
             <Link

@@ -436,103 +436,115 @@ export default function HowItWorksPage() {
       {/* Plan Comparison Summary */}
       <section className="py-16 px-4 md:px-8 max-w-5xl mx-auto w-full">
         <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0D111A] border border-emerald-500/30 text-emerald-400 text-xs font-semibold mb-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Free Early-Access Product
+          </div>
           <h2 className="font-display text-2xl sm:text-3xl font-bold text-white mb-2">
             Plans &amp; Capacities
           </h2>
           <p className="text-xs sm:text-sm text-slate-400">
-            Start free or upgrade when your team needs larger rooms.
+            TempLink is currently free to try while we continue improving the product.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-3xl bg-[#080B12] border border-white/10 flex flex-col justify-between">
+          <div className="p-6 rounded-3xl bg-[#080B12] border border-emerald-500/30 flex flex-col justify-between shadow-lg">
             <div>
-              <span className="text-xs font-bold uppercase text-slate-400 tracking-wider">Free</span>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold uppercase text-emerald-400 tracking-wider">Free Early Access</span>
+                <span className="text-[10px] font-mono bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-md font-bold">Active Now</span>
+              </div>
               <div className="mt-2 mb-4">
-                <span className="text-3xl font-bold text-white">₹0</span>
+                <span className="text-3xl font-bold text-white">Free</span>
               </div>
               <ul className="space-y-2 text-xs text-slate-300">
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-[16px]">check</span>
                   Up to 3 members per room
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-[16px]">check</span>
                   QR code &amp; room code joining
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-[16px]">check</span>
                   Real-time chat &amp; file sharing
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-[16px]">check</span>
                   Automatic room expiration
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-emerald-400 text-[16px]">check</span>
+                  No account required for basic rooms
                 </li>
               </ul>
             </div>
-            <Link href="/create" className="btn-ghost w-full py-2.5 rounded-xl text-xs font-semibold text-center mt-6">
-              Start Free
+            <Link href="/create" className="btn-primary w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-center mt-6">
+              Start Free Room
             </Link>
           </div>
 
-          <div className="p-6 rounded-3xl bg-[#0D111A] border border-primary/40 relative shadow-2xl flex flex-col justify-between">
-            <BorderBeam size={150} duration={8} colorFrom="#6366F1" colorTo="#A855F7" />
+          <div className="p-6 rounded-3xl bg-[#0D111A] border border-white/10 relative shadow-sm flex flex-col justify-between opacity-85">
             <div>
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold uppercase text-primary-light tracking-wider">Pro</span>
-                <span className="text-[10px] font-mono bg-primary/20 text-primary-light px-2 py-0.5 rounded-md font-bold">Popular</span>
+                <span className="text-[10px] font-mono bg-[#161E2E] text-slate-400 px-2 py-0.5 rounded-md font-bold">Planned</span>
               </div>
               <div className="mt-2 mb-4">
-                <span className="text-3xl font-bold text-white">₹99</span>
-                <span className="text-xs text-slate-400"> / month</span>
+                <span className="text-2xl font-bold text-white">Planned Tier</span>
               </div>
-              <ul className="space-y-2 text-xs text-slate-300">
+              <ul className="space-y-2 text-xs text-slate-400">
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
-                  Up to 10 members per room
+                  <span className="material-symbols-outlined text-slate-500 text-[16px]">check</span>
+                  Up to 10 members per room (Planned)
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
+                  <span className="material-symbols-outlined text-slate-500 text-[16px]">check</span>
                   Extended room durations (up to 24h)
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
-                  Advanced room controls
+                  <span className="material-symbols-outlined text-slate-500 text-[16px]">check</span>
+                  Secret password protection
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
+                  <span className="material-symbols-outlined text-slate-500 text-[16px]">check</span>
                   Larger in-session file transfers
                 </li>
               </ul>
             </div>
-            <Link href="/pricing" className="btn-primary w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-center mt-6">
-              Upgrade to Pro
+            <Link href="/pricing" className="btn-ghost w-full py-2.5 rounded-xl text-xs font-semibold text-center mt-6 border border-white/10">
+              View Planned Details
             </Link>
           </div>
 
-          <div className="p-6 rounded-3xl bg-[#080B12] border border-white/10 flex flex-col justify-between">
+          <div className="p-6 rounded-3xl bg-[#080B12] border border-white/10 flex flex-col justify-between opacity-85">
             <div>
-              <span className="text-xs font-bold uppercase text-slate-400 tracking-wider">Business</span>
-              <div className="mt-2 mb-4">
-                <span className="text-3xl font-bold text-white">Custom</span>
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold uppercase text-slate-400 tracking-wider">Business</span>
+                <span className="text-[10px] font-mono bg-[#161E2E] text-slate-400 px-2 py-0.5 rounded-md font-bold">Concept</span>
               </div>
-              <ul className="space-y-2 text-xs text-slate-300">
+              <div className="mt-2 mb-4">
+                <span className="text-2xl font-bold text-white">Planned Concept</span>
+              </div>
+              <ul className="space-y-2 text-xs text-slate-400">
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
-                  Custom room capacity (25+)
+                  <span className="material-symbols-outlined text-slate-500 text-[16px]">check</span>
+                  Organization workspaces
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
-                  Dedicated workspace controls
+                  <span className="material-symbols-outlined text-slate-500 text-[16px]">check</span>
+                  Custom member limits (25+)
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-light text-[16px]">check</span>
-                  API access &amp; analytics
+                  <span className="material-symbols-outlined text-slate-500 text-[16px]">check</span>
+                  REST API access (Coming soon)
                 </li>
               </ul>
             </div>
-            <Link href="/business" className="btn-ghost w-full py-2.5 rounded-xl text-xs font-semibold text-center mt-6">
-              Contact Business
+            <Link href="/business" className="btn-ghost w-full py-2.5 rounded-xl text-xs font-semibold text-center mt-6 border border-white/10">
+              Explore Concept
             </Link>
           </div>
         </div>

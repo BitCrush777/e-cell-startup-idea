@@ -40,10 +40,10 @@ export default function Footer() {
             <Link href="/business" className="hover:text-slate-300 transition-colors">
               Business
             </Link>
-            <Link href="/security#privacy" className="hover:text-slate-300 transition-colors">
+            <Link href="/privacy" className="hover:text-slate-300 transition-colors">
               Privacy
             </Link>
-            <Link href="/security#terms" className="hover:text-slate-300 transition-colors">
+            <Link href="/terms" className="hover:text-slate-300 transition-colors">
               Terms
             </Link>
           </div>

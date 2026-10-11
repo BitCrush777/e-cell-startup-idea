@@ -263,7 +263,25 @@ export default function Navbar() {
             </Link>
           ))}
 
-          <div className="pt-2 border-t border-white/10 flex flex-col gap-2">
+          <div className="pt-2 border-t border-white/10 flex items-center gap-3 px-3 py-2 text-xs text-slate-400">
+            <Link
+              href="/privacy"
+              onClick={() => setMobileMenuOpen(false)}
+              className="hover:text-white transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            <span>•</span>
+            <Link
+              href="/terms"
+              onClick={() => setMobileMenuOpen(false)}
+              className="hover:text-white transition-colors"
+            >
+              Terms of Service
+            </Link>
+          </div>
+
+          <div className="pt-1 border-t border-white/10 flex flex-col gap-2">
             {!user ? (
               <Link
                 href="/login"

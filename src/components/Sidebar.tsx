@@ -75,7 +75,7 @@ export default function Sidebar({ userIdentity = 'SilverWave' }: SidebarProps) {
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[9px] uppercase font-semibold text-slate-500 tracking-wider">
-                {user.plan} Account
+                {user.plan === 'FREE' ? 'Free Trial' : `${user.plan} Account`}
               </span>
               <span className="text-xs font-semibold text-slate-200 truncate">
                 {user.displayName}

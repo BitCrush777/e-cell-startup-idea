@@ -363,46 +363,133 @@ export default function HomePage() {
             Built for Short-Term Communication
           </span>
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">
-            Create. Connect. Communicate. Disappear.
+            Designed for real community collaboration
           </h2>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto mt-2">
+            Simple, private rooms for teams that need to communicate without permanent social links.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <BlurFade delay={0.1}>
-            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80">
-              <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
-                <span className="material-symbols-outlined text-[20px]">school</span>
+            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80 h-full flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
+                  <span className="material-symbols-outlined text-[20px]">school</span>
+                </div>
+                <h3 className="text-sm font-bold text-white mb-1.5">College Project Teams</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Coordinate semester assignments and lab work without exchanging phone numbers or cluttering personal messaging apps.
+                </p>
               </div>
-              <h3 className="text-base font-bold text-white mb-1.5">Student & Team Collaboration</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Coordinate study groups, hackathons, and short-term projects without exchanging personal phone numbers or cluttering permanent chat apps.
-              </p>
             </div>
           </BlurFade>
 
           <BlurFade delay={0.2}>
-            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80">
-              <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
-                <span className="material-symbols-outlined text-[20px]">work</span>
+            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80 h-full flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
+                  <span className="material-symbols-outlined text-[20px]">terminal</span>
+                </div>
+                <h3 className="text-sm font-bold text-white mb-1.5">Hackathon Participants</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Spin up a shared workspace with code snippets and rapid chat during 24-hour and 48-hour sprints.
+                </p>
               </div>
-              <h3 className="text-base font-bold text-white mb-1.5">Freelance & Client Consultations</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Discuss requirements, share project files, and review drafts with clients in temporary sessions that close when work is complete.
-              </p>
             </div>
           </BlurFade>
 
           <BlurFade delay={0.3}>
-            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80">
-              <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
-                <span className="material-symbols-outlined text-[20px]">handshake</span>
+            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80 h-full flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
+                  <span className="material-symbols-outlined text-[20px]">group_work</span>
+                </div>
+                <h3 className="text-sm font-bold text-white mb-1.5">Workshops &amp; Events</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Project a QR code on a screen to let attendees join an instant Q&amp;A or discussion room from their seats.
+                </p>
               </div>
-              <h3 className="text-base font-bold text-white mb-1.5">Marketplace & Event Communication</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Coordinate one-time transactions, event meetups, or local exchanges with time-limited rooms without sharing personal contacts.
-              </p>
             </div>
           </BlurFade>
+
+          <BlurFade delay={0.4}>
+            <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-[#080B12]/80 h-full flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-[#101621] border border-white/10 flex items-center justify-center text-primary-light mb-4">
+                  <span className="material-symbols-outlined text-[20px]">schedule</span>
+                </div>
+                <h3 className="text-sm font-bold text-white mb-1.5">Short-Term Collaborations</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Discuss one-time reviews or freelance feedback sessions that naturally expire when the work is done.
+                </p>
+              </div>
+            </div>
+          </BlurFade>
+        </div>
+      </section>
+
+      {/* Homepage FAQ Section */}
+      <section className="py-16 px-4 md:px-8 max-w-4xl mx-auto w-full">
+        <div className="text-center mb-10">
+          <span className="text-xs font-semibold text-primary-light uppercase tracking-widest block mb-2">
+            Clear Answers
+          </span>
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            Frequently Asked Questions
+          </h2>
+        </div>
+
+        <div className="space-y-3.5">
+          <div className="p-5 rounded-2xl bg-[#080B12] border border-white/10">
+            <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary-light text-[18px]">help</span>
+              Do I need to create an account to use TempLink?
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed pl-6">
+              No. Guest access is built into TempLink. Anyone can create or join a temporary room directly in a mobile or desktop browser without registering or providing personal phone numbers.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-[#080B12] border border-white/10">
+            <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary-light text-[18px]">help</span>
+              What happens when a room expires?
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed pl-6">
+              The room lifecycle is controlled by authoritative server timers. When the countdown reaches 0:00, all active connections are severed, the volatile in-memory room state terminates, and the room code becomes permanently expired.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-[#080B12] border border-white/10">
+            <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary-light text-[18px]">help</span>
+              Are messages archived or saved in a database?
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed pl-6">
+              No. Active messages exist strictly in volatile server memory (Cloudflare Durable Objects) while the session is open to relay messages in real time. We do not maintain a permanent chat database.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-[#080B12] border border-white/10">
+            <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary-light text-[18px]">help</span>
+              How many people can join a room?
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed pl-6">
+              During our free early-access period, rooms support up to 3 simultaneous members (including the creator). If a fourth person attempts to enter, they receive a clear Room Full notification.
+            </p>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-[#080B12] border border-white/10">
+            <h3 className="font-bold text-sm text-white mb-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary-light text-[18px]">help</span>
+              Is TempLink free to try?
+            </h3>
+            <p className="text-xs text-slate-400 leading-relaxed pl-6">
+              Yes. TempLink is operating as a free early-access product with no payment gateway or hidden fees while we validate demand with student and developer communities.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -415,7 +502,7 @@ export default function HomePage() {
               Ready for temporary communication?
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 max-w-xl mx-auto mb-8">
-              Create your first temporary private room in seconds. No signup required for basic rooms.
+              Create a temporary room, share a code or QR, communicate in real time, and let the room expire when you&apos;re done.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/create">

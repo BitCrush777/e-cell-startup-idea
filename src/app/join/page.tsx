@@ -396,7 +396,7 @@ function JoinRoomContent() {
                   </span>
                   {roomPlan === 'FREE' && (
                     <span className="text-[11px] text-slate-400 mt-0.5">
-                      Upgrade to Pro to create rooms for up to 10 members.
+                      Free trial rooms support up to 3 members. Higher capacity rooms are coming with paid plans.
                     </span>
                   )}
                 </div>
@@ -405,14 +405,14 @@ function JoinRoomContent() {
                 {roomPlan === 'FREE' && (
                   <Link
                     href="/pricing"
-                    className="btn-primary py-2 px-3.5 rounded-xl text-xs font-bold uppercase tracking-wider text-center flex-1"
+                    className="btn-ghost py-2 px-3.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-center flex-1"
                   >
-                    Upgrade to Pro
+                    Plan Details
                   </Link>
                 )}
                 <Link
                   href="/create"
-                  className="btn-ghost py-2 px-3.5 rounded-xl text-xs font-semibold uppercase tracking-wider text-center flex-1"
+                  className="btn-primary py-2 px-3.5 rounded-xl text-xs font-bold uppercase tracking-wider text-center flex-1"
                 >
                   Create New Room
                 </Link>
